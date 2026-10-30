@@ -61,6 +61,7 @@ function selectedFilter(entry){
     .includes(state.query.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()));
 }
 function refreshVisibility(){
+ if(state.guide)state.guide.visible=state.guideVisible&&!state.isolate;
  for(const entry of state.entries){
   entry.mesh.visible=(state.region==='all'||entry.region===state.region) &&
    (!state.isolate||!state.selected||entry===state.selected);
