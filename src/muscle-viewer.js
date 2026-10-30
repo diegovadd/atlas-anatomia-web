@@ -6,11 +6,13 @@ import {MUSCLE_REGIONS,identifyMuscle,auditMuscleMeshList,muscleDraft} from './m
 import {createMuscleDemo,DEMO_MUSCLES} from './muscle-demo.js';
 import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
 import {DETAILED_MODEL,classifySourceMuscle,layerMatches,regionFor,sourceLayer,detailAudit} from './muscle-detailed-data.js';
+import {muscleVisible,hideMuscle,restoreLastMuscle,restoreMuscle,restoreAllMuscles,visibleMuscleHits} from './muscle-depth.js';
 
 const $=id=>document.getElementById(id);
 const state={model:null,guide:null,bones:[],bonesVisible:false,guideVisible:true,demo:false,
  modelKind:'demo',loading:false,layerMode:'all',entries:[],selected:null,region:'all',
- query:'',isolate:false,loaded:false};
+ query:'',isolate:false,loaded:false,ghostMode:false,
+ hiddenIds:new Set(),hiddenHistory:[],lastPointer:null,meshToEntry:new Map()};
 const renderer=new THREE.WebGLRenderer({canvas:$('muscle-canvas'),antialias:true,alpha:true});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
 renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -69,13 +71,17 @@ function selectedFilter(entry){
   (!state.query||norm(entry.displayName+' '+(entry.originalName||'')).includes(norm(state.query)));
 }
 function refreshVisibility(){
+ const selectedId=state.selected?.id??null;
+ const ghost=state.ghostMode&&Boolean(state.selected)&&!state.isolate;
+
  if(state.guide)state.guide.visible=state.guideVisible&&!state.isolate;
  for(const bone of state.bones)bone.visible=state.bonesVisible&&!state.isolate;
  for(const entry of state.entries){
   const m=entry.mesh.material;
-  entry.mesh.visible=(state.region==='all'||entry.region===state.region) &&
-    layerMatches(entry,state.layerMode) &&
-    (!state.isolate||!state.selected||entry===state.selected);
+  entry.mesh.visible=muscleVisible(entry,{
+   region:state.region,layerMode:state.layerMode,isolate:state.isolate,
+   selectedId,hiddenIds:state.hiddenIds
+  });
   if(entry===state.selected){
    m.color.set('#e7d4a9');m.emissive.set('#6c4834');m.emissiveIntensity=.34;
    if(m.vertexColors){m.vertexColors=false;m.needsUpdate=true}
@@ -86,7 +92,25 @@ function refreshVisibility(){
     m.vertexColors=entry.originalVertexColors;m.needsUpdate=true;
    }
   }
+  const fade=ghost&&entry!==state.selected;
+  const transparent=fade||entry.originalTransparent;
+  const opacity=fade?Math.min(entry.originalOpacity,.16):entry.originalOpacity;
+  const depthWrite=fade?false:entry.originalDepthWrite;
+  if(m.transparent!==transparent||m.opacity!==opacity||m.depthWrite!==depthWrite){
+   m.transparent=transparent;m.opacity=opacity;m.depthWrite=depthWrite;m.needsUpdate=true;
+  }
  }
+ const hidden=state.hiddenIds.size;
+ for(const id of ['muscle-bubble-peel','muscle-hide-selected'])$(id).disabled=!state.selected;
+ for(const id of ['muscle-bubble-undo','muscle-undo-hidden'])$(id).disabled=hidden===0;
+ for(const id of ['muscle-restore-hidden'])$(id).disabled=hidden===0;
+ $('muscle-restore-all').hidden=hidden===0;
+ $('muscle-hidden-counter').textContent=String(hidden);
+ $('muscle-depth-status').textContent=hidden
+  ? `${hidden} músculo${hidden===1?'':'s'} retirado${hidden===1?'':'s'} temporalmente.`
+  : 'Ningún músculo retirado.';
+ $('muscle-xray').setAttribute('aria-pressed',String(state.ghostMode));
+ $('muscle-xray').textContent=state.ghostMode?'Desactivar transparencia':'Transparencia';
  $('muscle-isolate').disabled=!state.selected;
  $('muscle-bubble-isolate').disabled=!state.selected;
  $('muscle-isolate').textContent=state.isolate?'Mostrar músculos':'Aislar músculo';
@@ -106,9 +130,14 @@ function renderList(){
   const button=document.createElement('button');button.type='button';
   button.className='muscle-option'+(entry===state.selected?' active':'');
   button.setAttribute('aria-pressed',String(entry===state.selected));
-  button.textContent=entry.displayName;
+  button.textContent=entry.displayName+(state.hiddenIds.has(entry.id)?' · retirado':'');
+  if(state.hiddenIds.has(entry.id))button.classList.add('temporarily-hidden');
   if(state.modelKind==='detailed'&&!entry.translated)button.title='Nombre original en inglés; traducción por revisar';
-  button.addEventListener('click',()=>selectMuscle(entry,true));
+  button.addEventListener('click',()=>{
+   if(restoreMuscle(state.hiddenIds,state.hiddenHistory,entry.id))refreshVisibility();
+   state.lastPointer=null;
+   selectMuscle(entry,true);
+  });
   container.appendChild(button);
  }
 }
@@ -124,13 +153,48 @@ function focusOnMeshes(meshes){
 }
 function selectMuscle(entry,focus=false){
  state.selected=entry;state.isolate=false;
+ if(focus)state.lastPointer=null;
  refreshVisibility();renderList();infoFor(entry);
  if(focus)focusOnMeshes([entry.mesh]);
+}
+function hitMusclesAtLastPointer(){
+ if(!state.lastPointer)return [];
+ raycaster.setFromCamera(state.lastPointer,camera);
+ const meshes=state.entries.filter(entry=>entry.mesh.visible).map(entry=>entry.mesh);
+ return visibleMuscleHits(raycaster.intersectObjects(meshes,false),state.meshToEntry);
+}
+function peelSelectedMuscle(){
+ if(!state.selected)return;
+ const removed=state.selected;
+ if(!hideMuscle(state.hiddenIds,state.hiddenHistory,removed.id))return;
+ state.selected=null;state.isolate=false;
+ refreshVisibility();clearInfo();renderList();
+ // Tras retirar una superficie, probamos el mismo rayo y revelamos
+ // el siguiente músculo sin girar ni acercar la cámara.
+ const behind=hitMusclesAtLastPointer()[0];
+ if(behind)selectMuscle(behind,false);
+ const total=state.hiddenIds.size;
+ $('muscle-status').textContent=`Retirado: ${removed.displayName}. ${behind?'Detrás: '+behind.displayName+'. ':''}${total} músculo${total===1?'':'s'} oculto${total===1?'':'s'} · usa Recuperar para volver atrás.`;
+}
+function undoPeel(){
+ const id=restoreLastMuscle(state.hiddenIds,state.hiddenHistory);
+ if(id===null)return;
+ refreshVisibility();renderList();
+ const entry=state.entries.find(e=>e.id===id);
+ $('muscle-status').textContent=`Recuperado: ${entry?.displayName||'músculo'}. ${state.hiddenIds.size} retirados restantes.`;
+}
+function restoreAllPeels(){
+ const total=restoreAllMuscles(state.hiddenIds,state.hiddenHistory);
+ if(!total)return;
+ refreshVisibility();renderList();
+ $('muscle-status').textContent=`Restaurados ${total} músculos. Todas las capas vuelven a estar disponibles.`;
 }
 function changeRegion(id){
  state.region=id;state.selected=null;state.isolate=false;clearInfo();
  refreshVisibility();renderList();
- const shown=state.entries.filter(e=>state.region==='all'||e.region===state.region);
+ const shown=state.entries.filter(e=>muscleVisible(e,{
+  region:state.region,layerMode:state.layerMode,hiddenIds:state.hiddenIds
+ }));
  if(shown.length)focusOnMeshes(shown.map(e=>e.mesh));
 }
 function renderRegions(){
@@ -158,6 +222,8 @@ function acceptModel(model,audit,{demo=false,guide=null,kind='import'}={}){
  }
  if(state.guide)root.remove(state.guide);
  state.guide=guide;state.guideVisible=true;state.demo=demo;
+ state.hiddenIds.clear();state.hiddenHistory.length=0;
+ state.lastPointer=null;state.ghostMode=false;state.meshToEntry.clear();
  state.modelKind=demo?'demo':kind;
  state.bones=[];state.bonesVisible=false;state.layerMode='all';
  state.model=model;root.add(model);
@@ -177,8 +243,11 @@ function acceptModel(model,audit,{demo=false,guide=null,kind='import'}={}){
   obj.material=material;
   obj.frustumCulled=false;
   return {...info,mesh:obj,raw:meshName(obj),id,
-    originalColor:material.color.clone(),originalVertexColors:Boolean(material.vertexColors)};
+    originalColor:material.color.clone(),originalVertexColors:Boolean(material.vertexColors),
+    originalOpacity:material.opacity,originalTransparent:material.transparent,
+    originalDepthWrite:material.depthWrite};
  });
+ state.meshToEntry=new Map(state.entries.map(entry=>[entry.mesh,entry]));
  state.loaded=true;state.selected=null;state.isolate=false;state.region='all';state.query='';
  $('muscle-onboarding').hidden=true;
  $('muscle-demo-banner').hidden=false;
@@ -278,9 +347,10 @@ $('muscle-isolate').addEventListener('click',()=>{
  state.isolate=!state.isolate;refreshVisibility();
  if(state.isolate)focusOnMeshes([state.selected.mesh]);
 });
-$('muscle-all').addEventListener('click',()=>changeRegion('all'));
+$('muscle-all').addEventListener('click',()=>{restoreAllPeels();changeRegion('all')});
 $('muscle-reset').addEventListener('click',()=>{
  state.selected=null;state.isolate=false;state.query='';state.region='all';state.layerMode='all';
+ state.ghostMode=false;state.lastPointer=null;restoreAllMuscles(state.hiddenIds,state.hiddenHistory);
  $('muscle-search').value='';$('muscle-regions').value='all';$('muscle-layer').value='all';
  refreshVisibility();renderList();clearInfo();
  if(state.entries.length)focusOnMeshes(state.entries.map(e=>e.mesh));
@@ -293,8 +363,9 @@ $('muscle-canvas').addEventListener('pointerup',event=>{
  const rect=$('muscle-canvas').getBoundingClientRect();
  pointer.set((event.clientX-rect.left)*2/rect.width-1,-(event.clientY-rect.top)*2/rect.height+1);
  raycaster.setFromCamera(pointer,camera);
- const hit=raycaster.intersectObjects(state.entries.filter(e=>e.mesh.visible).map(e=>e.mesh),false)[0];
- if(hit){const entry=state.entries.find(e=>e.mesh===hit.object);if(entry)selectMuscle(entry)}
+ state.lastPointer=pointer.clone();
+ const entry=hitMusclesAtLastPointer()[0];
+ if(entry)selectMuscle(entry);
 });
 function closeDrawers(){
  $('muscle-sidebar').hidden=true;
@@ -310,6 +381,15 @@ function openDrawer(id,search=false){
 $('muscle-bubble-import').addEventListener('click',()=>$('muscle-file').click());
 $('muscle-demo-import').addEventListener('click',()=>$('muscle-file').click());
 $('muscle-demo-restore').addEventListener('click',showBuiltInDemo);
+$('muscle-hide-selected').addEventListener('click',peelSelectedMuscle);
+$('muscle-bubble-peel').addEventListener('click',peelSelectedMuscle);
+$('muscle-undo-hidden').addEventListener('click',undoPeel);
+$('muscle-bubble-undo').addEventListener('click',undoPeel);
+$('muscle-restore-hidden').addEventListener('click',restoreAllPeels);
+$('muscle-restore-all').addEventListener('click',restoreAllPeels);
+$('muscle-xray').addEventListener('click',()=>{
+ state.ghostMode=!state.ghostMode;refreshVisibility();
+});
 $('muscle-bones-toggle').addEventListener('click',()=>{
  state.bonesVisible=!state.bonesVisible;refreshVisibility();
 });

@@ -195,3 +195,52 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
   width:min(300px,calc(100% - 24px));padding:8px 10px;font-size:10px
  }
 }
+
+
+/* Anatomía por planos: revelar estructuras ocultas sin perder el contexto. */
+.muscle-current{max-width:min(455px,calc(100% - 160px))}
+.muscle-current-actions{display:flex;flex-wrap:wrap;gap:7px 12px;margin-top:5px;align-items:center}
+.muscle-current .muscle-current-actions button{
+ border:1px solid #42665d;background:#183a35;border-radius:7px;
+ padding:8px 10px;color:#ccefe4;font-size:11px;font-weight:600;
+}
+.muscle-current .muscle-current-actions #muscle-hide-selected{
+ background:#2d564c;border-color:#75a494;color:#fff;
+}
+.muscle-current .muscle-current-actions button:hover:not(:disabled){
+ background:#39685b;border-color:#a2cfbd;
+}
+.muscle-current .muscle-current-actions button[aria-pressed=true]{
+ background:#4d6350;border-color:#d5c99e;color:#fff2c9;
+}
+.muscle-depth-tools{
+ border:1px solid #496f64;background:linear-gradient(145deg,#142e2d,#102027);
+ border-radius:11px;padding:15px;display:grid;gap:10px;
+}
+.muscle-depth-tools strong{font:500 19px 'IBM Plex Serif',Georgia,serif;color:#eef6ed}
+.muscle-depth-tools p{margin:0;color:#bbcfcb;font-size:12px;line-height:1.65}
+.muscle-depth-tools small{color:#a9cabe;font-size:11px;line-height:1.5}
+.depth-buttons{display:flex;gap:8px;flex-wrap:wrap}
+.depth-buttons button{
+ min-height:36px;padding:8px 10px;border-radius:8px;
+ color:#e0f5ec;background:#1d413a;border:1px solid #4f8375;
+ font-size:12px;
+}
+.depth-buttons button:hover:not(:disabled){background:#2e6555}
+.muscle-option.temporarily-hidden{
+ border-style:dashed;border-color:#7e6751;
+ color:#c4b19f;opacity:.75;
+}
+.muscle-app #muscle-restore-all{
+ background:#2b4d44;border-color:#6f9989;color:#e3f1eb;
+}
+@media(max-width:750px){
+ .muscle-current{
+  max-width:calc(100% - 22px);
+  bottom:106px;padding:10px 11px;
+ }
+ .muscle-current strong{font-size:16px}
+ .muscle-current-actions{gap:4px;margin-top:2px}
+ .muscle-current .muscle-current-actions button{font-size:10px;padding:7px}
+ .muscle-app #muscle-restore-all{font-size:10px}
+}

@@ -29,6 +29,8 @@
     <button type="button" id="muscle-bubble-search"><span class="m-icon">⌕</span><span>Buscar</span></button>
     <span class="rail-separator" aria-hidden="true"></span>
     <button type="button" id="muscle-bubble-isolate" disabled><span class="m-icon">◎</span><span>Aislar</span></button>
+    <button type="button" id="muscle-bubble-peel" disabled title="Retirar el músculo seleccionado para explorar el que está detrás"><span class="m-icon">◫</span><span>Retirar</span></button>
+    <button type="button" id="muscle-bubble-undo" disabled title="Recuperar último músculo retirado"><span class="m-icon">↶</span><span>Recuperar</span></button>
     <button type="button" id="muscle-bubble-info"><span class="m-icon">ⓘ</span><span>Ficha</span></button>
     <button type="button" id="muscle-bubble-reset"><span class="m-icon">↺</span><span>Reiniciar</span></button>
    </nav>
@@ -57,12 +59,17 @@
    </div>
    <div class="muscle-current" id="muscle-current" hidden>
     <span>ESTRUCTURA MUSCULAR</span><strong id="muscle-active-name">Músculo seleccionado</strong>
-    <button type="button" id="muscle-open-info">Consultar ficha ↗</button>
+    <div class="muscle-current-actions">
+     <button type="button" id="muscle-hide-selected">Retirar y explorar detrás</button>
+     <button type="button" id="muscle-xray" aria-pressed="false">Transparencia</button>
+     <button type="button" id="muscle-open-info">Consultar ficha ↗</button>
+    </div>
    </div>
    <div class="viewer-actions">
     <button type="button" id="muscle-isolate" disabled>Aislar músculo</button>
     <button type="button" id="muscle-all">Mostrar todo</button>
     <button type="button" id="muscle-reset">Restablecer vista</button>
+    <button type="button" id="muscle-restore-all" hidden>Recuperar todos <span id="muscle-hidden-counter">0</span></button>
     <span class="viewer-divider" aria-hidden="true"></span>
     <button type="button" data-muscle-view="front" aria-label="Vista anterior">Anterior</button>
     <button type="button" data-muscle-view="back" aria-label="Vista posterior">Posterior</button>
@@ -81,6 +88,15 @@
      <p><b>Demostración:</b> 18 tipos con volúmenes aproximados bilaterales; útil para revisar la interfaz, no la forma anatómica.</p>
      <button type="button" id="muscle-demo-restore">Usar ejemplo esquemático</button>
     </div>
+    <section class="muscle-depth-tools" aria-label="Exploración de estructuras posteriores">
+     <strong>Explorar músculos posteriores</strong>
+     <p>Selecciona un músculo superficial y pulsa <b>Retirar</b>. Podrás tocar las estructuras que cubría. Recupera los músculos sin volver a cargar el modelo.</p>
+     <div class="depth-buttons">
+      <button type="button" id="muscle-undo-hidden" disabled>Deshacer último</button>
+      <button type="button" id="muscle-restore-hidden" disabled>Restaurar todos</button>
+     </div>
+     <small id="muscle-depth-status" role="status" aria-live="polite">Ningún músculo retirado.</small>
+    </section>
     <label for="muscle-layer">Profundidad muscular</label>
     <select id="muscle-layer" aria-label="Filtrar músculos por profundidad">
      <option value="all">Todas las capas</option>
@@ -96,6 +112,7 @@
     <input id="muscle-search" type="search" placeholder="Masetero, deltoides…" autocomplete="off">
     <div class="list-title">Estructuras <span id="muscle-list-count">0 resultados</span></div>
     <div id="muscle-list" aria-label="Músculos disponibles"></div>
+    <p class="note">Los músculos retirados siguen apareciendo en la lista y se pueden recuperar seleccionándolos.</p>
    </div>
   </aside>
   <aside class="muscle-drawer muscle-information" id="muscle-panel" aria-label="Ficha anatómica muscular" hidden>
