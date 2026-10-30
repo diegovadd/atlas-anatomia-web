@@ -4,7 +4,7 @@
  <meta charset="UTF-8">
  <meta name="viewport" content="width=device-width,initial-scale=1.0">
  <meta name="theme-color" content="#04080c">
- <meta name="description" content="Atlas: laboratorio experimental de anatomía muscular 3D con importación local de modelos GLB segmentados.">
+ <meta name="description" content="Atlas: explora en 3D una demostración muscular esquemática y carga modelos GLB segmentados para revisarlos.">
  <title>ATLAS · Laboratorio muscular 3D</title>
  <link rel="preconnect" href="https://fonts.googleapis.com">
  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,10 +35,19 @@
    <div class="muscle-onboarding" id="muscle-onboarding">
     <span class="eyebrow">VISTA EXPERIMENTAL · ETAPA 02</span>
     <h1>Sistema <em>muscular</em></h1>
-    <p>Importa un modelo GLB con músculos separados para explorarlos, aislarlos y consultar su identificación.</p>
+    <p>Explora una demostración 3D esquemática de músculos bilaterales. También puedes importar un GLB segmentado.</p>
     <button type="button" id="muscle-import-cta">Importar modelo muscular <span aria-hidden="true">↗</span></button>
-    <small>No hay un modelo muscular incluido. Los datos OINA permanecen pendientes de validación.</small>
+    <small>La demostración no representa una anatomía precisa. Los datos OINA y los modelos reales requieren validación.</small>
    </div>
+   <section class="muscle-demo-banner" id="muscle-demo-banner" hidden aria-label="Advertencia de geometría demostrativa">
+    <span class="eyebrow">PROTOTIPO · GEOMETRÍA ESQUEMÁTICA</span>
+    <strong>Explora músculos seleccionables en 3D</strong>
+    <p>Las formas y ubicaciones son ilustrativas, no anatómicamente exactas. No usar para estudiar inserciones.</p>
+    <div class="demo-banner-actions">
+     <button type="button" id="muscle-guide-toggle" aria-pressed="true">Ocultar silueta</button>
+     <button type="button" id="muscle-demo-import">Importar GLB real ↗</button>
+    </div>
+   </section>
    <div class="muscle-current" id="muscle-current" hidden>
     <span>ESTRUCTURA MUSCULAR</span><strong id="muscle-active-name">Músculo seleccionado</strong>
     <button type="button" id="muscle-open-info">Consultar ficha ↗</button>
@@ -47,16 +56,21 @@
     <button type="button" id="muscle-isolate" disabled>Aislar músculo</button>
     <button type="button" id="muscle-all">Mostrar todo</button>
     <button type="button" id="muscle-reset">Restablecer vista</button>
+    <span class="viewer-divider" aria-hidden="true"></span>
+    <button type="button" data-muscle-view="front" aria-label="Vista anterior">Anterior</button>
+    <button type="button" data-muscle-view="back" aria-label="Vista posterior">Posterior</button>
+    <button type="button" data-muscle-view="side" aria-label="Vista lateral">Lateral</button>
    </div>
-   <p id="muscle-status" class="muscle-status" role="status" aria-live="polite">Prototipo muscular: importa un GLB local segmentado para comenzar. Sin revisión anatómica final.</p>
+   <p id="muscle-status" class="muscle-status" role="status" aria-live="polite">Preparando demostración muscular 3D…</p>
   </main>
   <button type="button" class="muscle-dismiss" id="muscle-dismiss" aria-label="Cerrar menú abierto" hidden></button>
   <aside class="muscle-drawer muscle-navigation" id="muscle-sidebar" aria-label="Regiones y búsqueda de músculos" hidden>
    <div class="drawer-head"><div><span class="eyebrow">EXPLORAR</span><h2>Regiones y músculos</h2></div><button type="button" id="muscle-close-nav" aria-label="Cerrar menú">×</button></div>
    <div class="drawer-body">
+    <div class="demo-drawer-tools"><strong>Modelo de demostración</strong><p>18 tipos de músculos, representados de ambos lados con volúmenes aproximados. No equivale a un atlas anatómico preciso.</p><button type="button" id="muscle-demo-restore">Volver al ejemplo 3D</button></div>
     <label for="muscle-file">Modelo muscular GLB</label>
     <input id="muscle-file" type="file" accept=".glb,model/gltf-binary">
-    <p class="note">Importación local, máximo 150 MB. Las mallas deben estar segmentadas y nombradas. El archivo no se sube a GitHub.</p>
+    <p class="note">Si tienes un GLB anatómico segmentado (máximo 150 MB), sustituye el ejemplo. Se procesa únicamente en tu navegador; revisa licencia, mallas y orientación.</p>
     <label for="muscle-regions">Región anatómica</label>
     <select id="muscle-regions"></select>
     <label for="muscle-search">Buscar músculo</label>
@@ -68,7 +82,7 @@
   <aside class="muscle-drawer muscle-information" id="muscle-panel" aria-label="Ficha anatómica muscular" hidden>
    <div class="drawer-head"><div><span class="eyebrow">FICHA · BORRADOR</span><h2>Anatomía muscular</h2></div><button type="button" id="muscle-close-info" aria-label="Cerrar ficha">×</button></div>
    <div class="drawer-body">
-    <p id="muscle-placeholder">Selecciona un músculo en el modelo o en la lista para consultar su identificación y estado de revisión.</p>
+    <p id="muscle-placeholder">Selecciona un músculo en el modelo o desde la lista para ver nombre, región y campos OINA. Ninguna ficha ha sido cotejada bibliográficamente.</p>
     <div id="muscle-ficha" hidden>
      <h2 class="selected-muscle" id="muscle-name"></h2>
      <p id="muscle-region"></p>

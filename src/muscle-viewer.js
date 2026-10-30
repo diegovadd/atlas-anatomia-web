@@ -3,9 +3,10 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {DRACOLoader} from 'three/addons/loaders/DRACOLoader.js';
 import {MUSCLE_REGIONS,identifyMuscle,auditMuscleMeshList,muscleDraft} from './muscle-data.js';
+import {createMuscleDemo,DEMO_MUSCLES} from './muscle-demo.js';
 
 const $=id=>document.getElementById(id);
-const state={model:null,entries:[],selected:null,region:'all',query:'',isolate:false,loaded:false};
+const state={model:null,guide:null,guideVisible:true,demo:false,entries:[],selected:null,region:'all',query:'',isolate:false,loaded:false};
 const renderer=new THREE.WebGLRenderer({canvas:$('muscle-canvas'),antialias:true,alpha:true});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
 renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -13,7 +14,7 @@ renderer.toneMapping=THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure=.9;
 const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(40,1,.01,120);
 const controls=new OrbitControls(camera,renderer.domElement);
-controls.enableDamping=true;controls.enablePan=true;controls.minDistance=.08;controls.maxDistance=15;
+controls.enableDamping=true;controls.enablePan=true;controls.minDistance=.08;controls.maxDistance=35;
 const root=new THREE.Group();scene.add(root);
 scene.add(new THREE.HemisphereLight(0xdfeae5,0x25343f,1.2));
 const light=new THREE.DirectionalLight(0xffede1,2);light.position.set(3,5,4);scene.add(light);
@@ -64,8 +65,8 @@ function refreshVisibility(){
   entry.mesh.visible=(state.region==='all'||entry.region===state.region) &&
    (!state.isolate||!state.selected||entry===state.selected);
   const m=entry.mesh.material;
-  if(entry===state.selected){m.color.set('#c88d88');m.emissive.set('#48211e');m.emissiveIntensity=.2}
-  else{m.color.set('#965b56');m.emissive.set('#000000');m.emissiveIntensity=0}
+  if(entry===state.selected){m.color.set('#e8c0a2');m.emissive.set('#653a2b');m.emissiveIntensity=.3}
+  else{m.color.set(state.demo?'#ae6460':'#985e5b');m.emissive.set('#000000');m.emissiveIntensity=0}
  }
  $('muscle-isolate').disabled=!state.selected;
  $('muscle-isolate').textContent=state.isolate?'Mostrar músculos':'Aislar músculo';
@@ -95,7 +96,7 @@ function focusOnMeshes(meshes){
  const center=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
  const extent=Math.max(size.x,size.y,size.z,.08);
  controls.target.copy(center);
- camera.position.copy(center).add(new THREE.Vector3(.25,.18,1).normalize().multiplyScalar(extent*2.6));
+ camera.position.copy(center).add(new THREE.Vector3(.18,.08,1).normalize().multiplyScalar(extent*(state.demo?1.84:2.25)));
  camera.near=Math.max(extent/2000,.0001);camera.far=Math.max(200,extent*40);camera.updateProjectionMatrix();controls.update();
 }
 function selectMuscle(entry,focus=false){
@@ -116,9 +117,16 @@ function renderRegions(){
  }
  c.value='all';
 }
-function acceptModel(model,audit){
- if(state.model){root.remove(state.model);state.model.traverse(obj=>{if(obj.isMesh)obj.material?.dispose?.()})}
- state.model=model;root.add(model);state.entries=[];
+function acceptModel(model,audit,{demo=false,guide=null}={}){
+ if(state.model){
+  root.remove(state.model);
+  state.model.traverse(obj=>{if(obj.isMesh)obj.material?.dispose?.()});
+ }
+ if(state.guide){root.remove(state.guide)}
+ state.guide=guide;state.guideVisible=true;state.demo=demo;
+ state.model=model;root.add(model);
+ if(guide)root.add(guide);
+ state.entries=[];
  model.traverse(obj=>{
   if(!obj.isMesh)return;
   const raw=meshName(obj);
@@ -130,14 +138,42 @@ function acceptModel(model,audit){
  });
  state.loaded=true;state.selected=null;state.isolate=false;state.region='all';state.query='';
  $('muscle-onboarding').hidden=true;
+ $('muscle-demo-banner').hidden=!demo;
+ $('muscle-guide-toggle').hidden=!demo;
+ $('muscle-guide-toggle').setAttribute('aria-pressed','true');
+ $('muscle-guide-toggle').textContent='Ocultar silueta';
  $('muscle-search').value='';$('muscle-regions').value='all';
  root.position.set(0,0,0);root.updateMatrixWorld(true);
  const box=new THREE.Box3().setFromObject(model),center=box.getCenter(new THREE.Vector3()),min=box.min.clone();
  root.position.set(-center.x,-min.y,-center.z);root.updateMatrixWorld(true);
  refreshVisibility();renderList();clearInfo();
  focusOnMeshes(state.entries.map(e=>e.mesh));
- $('muscle-status').textContent=`${audit.recognizedMeshes} mallas musculares, ${audit.recognizedTypes} tipos, ${audit.triangles.toLocaleString('es')} triángulos. ${audit.unclassifiedMeshes} mallas sin identificar (ocultas).`;
+ $('muscle-status').textContent=demo
+  ? `DEMOSTRACIÓN ESQUEMÁTICA · ${audit.recognizedTypes} tipos, ${audit.recognizedMeshes} volúmenes bilaterales · no validado para estudio de inserciones.`
+  : `GLB IMPORTADO · ${audit.recognizedMeshes} mallas, ${audit.recognizedTypes} tipos, ${audit.triangles.toLocaleString('es')} triángulos. ${audit.unclassifiedMeshes} mallas sin identificar (ocultas). Requiere revisión anatómica.`;
 }
+function showBuiltInDemo(){
+ const {muscles,guide}=createMuscleDemo(THREE);
+ const samples=[];
+ muscles.traverse(obj=>{if(obj.isMesh)samples.push({isMesh:true,name:obj.name,geometry:obj.geometry})});
+ const audit=auditMuscleMeshList(samples);
+ if(audit.recognizedTypes!==DEMO_MUSCLES.length||!audit.acceptable){
+  $('muscle-status').textContent='No fue posible iniciar la demostración 3D.';
+  return;
+ }
+ acceptModel(muscles,audit,{demo:true,guide});
+ closeDrawers();
+}
+function setView(direction){
+ if(!state.entries.length)return;
+ const center=controls.target.clone();
+ const radius=Math.max(.35,camera.position.distanceTo(center));
+ const axis=direction==='back'?new THREE.Vector3(0,0,-1):
+  direction==='side'?new THREE.Vector3(1,0,0):new THREE.Vector3(0,0,1);
+ camera.position.copy(center).add(axis.multiplyScalar(radius));
+ camera.up.set(0,1,0);camera.lookAt(center);controls.update();
+}
+
 function loadGLB(url){
  return new Promise((resolve,reject)=>{
   const loader=new GLTFLoader(),draco=new DRACOLoader();
@@ -158,7 +194,8 @@ $('muscle-file').addEventListener('change',async(event)=>{
   const meshes=[];model.traverse(obj=>{if(obj.isMesh)meshes.push({isMesh:true,name:meshName(obj),geometry:obj.geometry})});
   const audit=auditMuscleMeshList(meshes);
   if(!audit.acceptable)throw new Error('Se necesitan al menos dos tipos musculares identificados y geometría triangular.');
-  acceptModel(model,audit);
+  acceptModel(model,audit,{demo:false});
+  closeDrawers();
  }catch(error){status.textContent='No se pudo cargar el modelo: '+(error?.message||'error desconocido');console.error(error)}
  finally{URL.revokeObjectURL(url);event.target.value=''}
 });
@@ -199,6 +236,18 @@ function openDrawer(id,search=false){
  if(search)requestAnimationFrame(()=>$('muscle-search').focus());
 }
 $('muscle-bubble-import').addEventListener('click',()=>$('muscle-file').click());
+$('muscle-demo-import').addEventListener('click',()=>$('muscle-file').click());
+$('muscle-demo-restore').addEventListener('click',showBuiltInDemo);
+$('muscle-guide-toggle').addEventListener('click',()=>{
+ if(!state.guide)return;
+ state.guideVisible=!state.guideVisible;
+ state.guide.visible=state.guideVisible;
+ $('muscle-guide-toggle').setAttribute('aria-pressed',String(state.guideVisible));
+ $('muscle-guide-toggle').textContent=state.guideVisible?'Ocultar silueta':'Mostrar silueta';
+});
+for(const button of document.querySelectorAll('[data-muscle-view]')){
+ button.addEventListener('click',()=>setView(button.dataset.muscleView));
+}
 $('muscle-import-cta').addEventListener('click',()=>$('muscle-file').click());
 $('muscle-bubble-regions').addEventListener('click',()=>openDrawer('muscle-sidebar'));
 $('muscle-bubble-search').addEventListener('click',()=>openDrawer('muscle-sidebar',true));
@@ -215,4 +264,4 @@ window.addEventListener('keydown',event=>{
  if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;
  $('muscle-reset').click();
 });
-renderRegions();clearInfo();renderList();
+renderRegions();clearInfo();renderList();showBuiltInDemo();

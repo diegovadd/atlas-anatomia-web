@@ -86,3 +86,65 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
  .muscle-drawer{top:60px}
 }
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+
+
+/* Etapa 02 · controles sobre demo 3D sin cubrir la geometría */
+.muscle-demo-banner{
+ position:absolute;left:135px;top:72px;z-index:4;
+ width:min(355px,calc(100% - 245px));
+ display:flex;flex-direction:column;gap:8px;
+ padding:16px 17px 15px;
+ border:1px solid #3c595e;border-radius:13px;
+ background:rgba(8,18,26,.84);backdrop-filter:blur(15px);
+ box-shadow:0 12px 38px #0008;
+}
+.muscle-demo-banner strong{
+ font:500 19px/1.2 'IBM Plex Serif',Georgia,serif;
+ color:#f2eeea;letter-spacing:-.01em;
+}
+.muscle-demo-banner p{
+ margin:0;color:#bbc9ca;font-size:12px;line-height:1.6;
+}
+.demo-banner-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:4px}
+.demo-banner-actions button,.demo-drawer-tools button{
+ font-size:11px;color:#dcefe8;background:#1a3738;
+ border:1px solid #41615b;border-radius:8px;
+ padding:9px 10px;min-height:36px;
+}
+.demo-banner-actions button:hover,.demo-drawer-tools button:hover{
+ background:#2a4b44;border-color:#87b5a6;
+}
+.demo-drawer-tools{
+ display:grid;gap:8px;padding:14px 13px;margin-bottom:8px;
+ border:1px solid #35504e;border-radius:11px;
+ background:linear-gradient(155deg,#17312e,#10212a);
+}
+.demo-drawer-tools strong{font:500 20px 'IBM Plex Serif',Georgia,serif;color:#e3efeb}
+.demo-drawer-tools p{font-size:12px;line-height:1.6;color:#becfcf;margin:0}
+.demo-drawer-tools button{justify-self:start}
+.viewer-divider{width:1px;background:#3d565b;height:29px;align-self:center;margin:0 2px}
+.muscle-app .viewer-actions{flex-wrap:wrap;max-width:min(630px,calc(100% - 135px))}
+.muscle-app .viewer-actions button{white-space:nowrap}
+@media(max-width:900px) and (min-width:751px){
+ .muscle-demo-banner{width:min(285px,calc(100% - 245px));}
+ .muscle-demo-banner strong{font-size:16px}
+ .muscle-app .viewer-actions{max-width:calc(100% - 130px)}
+}
+@media(max-width:750px){
+ .muscle-demo-banner{
+  top:153px;left:12px;width:min(320px,calc(100% - 24px));
+  padding:11px 13px;gap:5px;
+ }
+ .muscle-demo-banner strong{font-size:16px}
+ .muscle-demo-banner p{font-size:11px;line-height:1.35}
+ .demo-banner-actions{gap:5px}
+ .demo-banner-actions button{min-height:32px;padding:6px 8px}
+ .muscle-app .viewer-actions{max-width:none;justify-content:center;gap:4px}
+ .muscle-app .viewer-actions button{font-size:10px;padding:8px 7px}
+ .muscle-app .viewer-actions .viewer-divider{height:24px}
+ .muscle-current{bottom:98px}
+}
+@media(max-height:640px){
+ .muscle-demo-banner{max-height:35vh;overflow-y:auto}
+ .muscle-app .viewer-actions{max-height:80px;overflow-x:auto}
+}
