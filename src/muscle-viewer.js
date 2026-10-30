@@ -4,9 +4,13 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {DRACOLoader} from 'three/addons/loaders/DRACOLoader.js';
 import {MUSCLE_REGIONS,identifyMuscle,auditMuscleMeshList,muscleDraft} from './muscle-data.js';
 import {createMuscleDemo,DEMO_MUSCLES} from './muscle-demo.js';
+import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
+import {DETAILED_MODEL,classifySourceMuscle,layerMatches,regionFor,sourceLayer,detailAudit} from './muscle-detailed-data.js';
 
 const $=id=>document.getElementById(id);
-const state={model:null,guide:null,guideVisible:true,demo:false,entries:[],selected:null,region:'all',query:'',isolate:false,loaded:false};
+const state={model:null,guide:null,bones:[],bonesVisible:false,guideVisible:true,demo:false,
+ modelKind:'demo',loading:false,layerMode:'all',entries:[],selected:null,region:'all',
+ query:'',isolate:false,loaded:false};
 const renderer=new THREE.WebGLRenderer({canvas:$('muscle-canvas'),antialias:true,alpha:true});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
 renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -33,13 +37,16 @@ animate();
 
 function meshName(obj){
  const ud=Object.keys(obj.userData||{}).length?obj.userData:obj.parent?.userData||{};
- const names=[ud.zname,obj.name,obj.parent?.name].filter(x=>typeof x==='string'&&x.trim());
+ const names=[ud.name,ud.zname,obj.name,obj.parent?.name].filter(x=>typeof x==='string'&&x.trim());
  return names.find(name=>identifyMuscle(name))||names[0]||'Malla sin identificar';
 }
 function infoFor(entry){
  const info=muscleDraft(entry);
  $('muscle-name').textContent=info.name;
- $('muscle-region').textContent=info.region;
+ $('muscle-region').textContent=regionFor(entry);
+ $('muscle-info-layer').textContent=entry.layer==='deep'?'Músculo profundo':'Músculo superficial';
+ $('muscle-info-original').textContent=entry.originalName||entry.raw||'—';
+ $('muscle-info-fma').textContent=entry.fma||'No disponible';
  $('muscle-origin').textContent=info.origin;
  $('muscle-insertion').textContent=info.insertion;
  $('muscle-innervation').textContent=info.innervation;
@@ -56,21 +63,35 @@ function clearInfo(){
  $('muscle-bubble-isolate').disabled=true;
 }
 function selectedFilter(entry){
+ const norm=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
  return (state.region==='all'||entry.region===state.region) &&
-  (!state.query||entry.displayName.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
-    .includes(state.query.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()));
+  layerMatches(entry,state.layerMode) &&
+  (!state.query||norm(entry.displayName+' '+(entry.originalName||'')).includes(norm(state.query)));
 }
 function refreshVisibility(){
  if(state.guide)state.guide.visible=state.guideVisible&&!state.isolate;
+ for(const bone of state.bones)bone.visible=state.bonesVisible&&!state.isolate;
  for(const entry of state.entries){
-  entry.mesh.visible=(state.region==='all'||entry.region===state.region) &&
-   (!state.isolate||!state.selected||entry===state.selected);
   const m=entry.mesh.material;
-  if(entry===state.selected){m.color.set('#e8c0a2');m.emissive.set('#653a2b');m.emissiveIntensity=.3}
-  else{m.color.set(state.demo?'#ae6460':'#985e5b');m.emissive.set('#000000');m.emissiveIntensity=0}
+  entry.mesh.visible=(state.region==='all'||entry.region===state.region) &&
+    layerMatches(entry,state.layerMode) &&
+    (!state.isolate||!state.selected||entry===state.selected);
+  if(entry===state.selected){
+   m.color.set('#e7d4a9');m.emissive.set('#6c4834');m.emissiveIntensity=.34;
+   if(m.vertexColors){m.vertexColors=false;m.needsUpdate=true}
+  }else{
+   m.color.copy(entry.originalColor);
+   m.emissive.set('#000000');m.emissiveIntensity=0;
+   if(m.vertexColors!==entry.originalVertexColors){
+    m.vertexColors=entry.originalVertexColors;m.needsUpdate=true;
+   }
+  }
  }
  $('muscle-isolate').disabled=!state.selected;
+ $('muscle-bubble-isolate').disabled=!state.selected;
  $('muscle-isolate').textContent=state.isolate?'Mostrar músculos':'Aislar músculo';
+ $('muscle-bones-toggle').setAttribute('aria-pressed',String(state.bonesVisible));
+ $('muscle-bones-toggle').textContent=state.bonesVisible?'Ocultar esqueleto':'Mostrar esqueleto';
 }
 function renderList(){
  const container=$('muscle-list');container.replaceChildren();
@@ -86,6 +107,7 @@ function renderList(){
   button.className='muscle-option'+(entry===state.selected?' active':'');
   button.setAttribute('aria-pressed',String(entry===state.selected));
   button.textContent=entry.displayName;
+  if(state.modelKind==='detailed'&&!entry.translated)button.title='Nombre original en inglés; traducción por revisar';
   button.addEventListener('click',()=>selectMuscle(entry,true));
   container.appendChild(button);
  }
@@ -113,45 +135,85 @@ function changeRegion(id){
 }
 function renderRegions(){
  const c=$('muscle-regions');c.replaceChildren();
- for(const group of MUSCLE_REGIONS){
+ for(const group of [...MUSCLE_REGIONS,{id:'other',label:'Otras estructuras musculares'}]){
   const option=document.createElement('option');option.value=group.id;option.textContent=group.label;c.appendChild(option);
  }
  c.value='all';
 }
-function acceptModel(model,audit,{demo=false,guide=null}={}){
+function acceptModel(model,audit,{demo=false,guide=null,kind='import'}={}){
+ // Clasificar antes de eliminar el modelo anterior: un GLB defectuoso
+ // nunca debe destruir una vista funcional.
+ const prepared=[],bones=[];
+ model.traverse(obj=>{
+  if(!obj.isMesh)return;
+  const layer=sourceLayer(obj.userData||{});
+  if(layer==='skeleton'){bones.push(obj);return}
+  const info=classifySourceMuscle(meshName(obj),obj.userData||{});
+  if(info)prepared.push({obj,info});
+ });
+ if(prepared.length<2)throw new Error('No se identificaron suficientes estructuras musculares en el modelo.');
  if(state.model){
   root.remove(state.model);
   state.model.traverse(obj=>{if(obj.isMesh)obj.material?.dispose?.()});
  }
- if(state.guide){root.remove(state.guide)}
+ if(state.guide)root.remove(state.guide);
  state.guide=guide;state.guideVisible=true;state.demo=demo;
+ state.modelKind=demo?'demo':kind;
+ state.bones=[];state.bonesVisible=false;state.layerMode='all';
  state.model=model;root.add(model);
  if(guide)root.add(guide);
- state.entries=[];
- model.traverse(obj=>{
-  if(!obj.isMesh)return;
-  const raw=meshName(obj);
-  const info=identifyMuscle(raw);
-  if(!info){obj.visible=false;return}
-  obj.material=new THREE.MeshStandardMaterial({color:0x965b56,roughness:.95,metalness:0,side:THREE.DoubleSide});
+ for(const obj of bones){
+  const material=obj.material?.clone?.()||new THREE.MeshStandardMaterial({color:'#e0dbd2'});
+  material.transparent=true;material.opacity=.24;material.depthWrite=false;
+  material.needsUpdate=true;obj.material=material;obj.visible=false;
+  state.bones.push(obj);
+ }
+ const identified=new Set(prepared.map(x=>x.obj));
+ model.traverse(obj=>{if(obj.isMesh&&!identified.has(obj)&&!bones.includes(obj))obj.visible=false});
+ state.entries=prepared.map(({obj,info},id)=>{
+  const material=obj.material?.clone?.()||new THREE.MeshStandardMaterial({
+   color:'#a75d58',roughness:.94,metalness:0,side:THREE.DoubleSide
+  });
+  obj.material=material;
   obj.frustumCulled=false;
-  state.entries.push({...info,mesh:obj,raw,id:state.entries.length});
+  return {...info,mesh:obj,raw:meshName(obj),id,
+    originalColor:material.color.clone(),originalVertexColors:Boolean(material.vertexColors)};
  });
  state.loaded=true;state.selected=null;state.isolate=false;state.region='all';state.query='';
  $('muscle-onboarding').hidden=true;
- $('muscle-demo-banner').hidden=!demo;
+ $('muscle-demo-banner').hidden=false;
  $('muscle-guide-toggle').hidden=!demo;
+ $('muscle-load-detailed').hidden=!demo;
+ $('muscle-bones-toggle').hidden=!state.bones.length;
+ $('muscle-source-credit').hidden=kind!=='detailed';
  $('muscle-guide-toggle').setAttribute('aria-pressed','true');
  $('muscle-guide-toggle').textContent='Ocultar silueta';
+ $('muscle-layer').value='all';
  $('muscle-search').value='';$('muscle-regions').value='all';
+ if(kind==='detailed'){
+  $('muscle-banner-label').textContent='FUENTE ABIERTA · CC BY-SA 4.0';
+  $('muscle-banner-title').textContent='Modelo anatómico segmentado';
+  $('muscle-banner-description').textContent=
+   'Écorché / BodyParts3D / Z-Anatomy: superficies musculares profundas y superficiales. Su precisión aún debe revisarse específicamente para Atlas.';
+ }else if(demo){
+  $('muscle-banner-label').textContent='PROTOTIPO · GEOMETRÍA ESQUEMÁTICA';
+  $('muscle-banner-title').textContent='Explora músculos seleccionables en 3D';
+  $('muscle-banner-description').textContent=
+   'El ejemplo usa volúmenes simplificados. Para estudiar formas y trayectos, carga las mallas detalladas de fuente abierta.';
+ }else{
+  $('muscle-banner-label').textContent='ARCHIVO GLB IMPORTADO';
+  $('muscle-banner-title').textContent='Mallas musculares del usuario';
+  $('muscle-banner-description').textContent=
+   'Modelo externo sin validación anatómica en Atlas. Comprueba origen, orientación y escala.';
+ }
  root.position.set(0,0,0);root.updateMatrixWorld(true);
  const box=new THREE.Box3().setFromObject(model),center=box.getCenter(new THREE.Vector3()),min=box.min.clone();
  root.position.set(-center.x,-min.y,-center.z);root.updateMatrixWorld(true);
  refreshVisibility();renderList();clearInfo();
  focusOnMeshes(state.entries.map(e=>e.mesh));
  $('muscle-status').textContent=demo
-  ? `DEMOSTRACIÓN ESQUEMÁTICA · ${audit.recognizedTypes} tipos, ${audit.recognizedMeshes} volúmenes bilaterales · no validado para estudio de inserciones.`
-  : `GLB IMPORTADO · ${audit.recognizedMeshes} mallas, ${audit.recognizedTypes} tipos, ${audit.triangles.toLocaleString('es')} triángulos. ${audit.unclassifiedMeshes} mallas sin identificar (ocultas). Requiere revisión anatómica.`;
+  ? `EJEMPLO ESQUEMÁTICO · ${audit.recognizedTypes} tipos y ${state.entries.length} volúmenes. Carga el detallado para explorar superficies musculares reales.`
+  : `${kind==='detailed'?'ÉCORCHÉ · CC BY-SA 4.0':'GLB IMPORTADO'} · ${state.entries.length} mallas musculares, ${new Set(state.entries.map(e=>e.key)).size} tipos, ${state.bones.length} mallas de referencia ósea. Estudio anatómico aún en revisión.`;
 }
 function showBuiltInDemo(){
  const {muscles,guide}=createMuscleDemo(THREE);
@@ -177,10 +239,13 @@ function setView(direction){
 
 function loadGLB(url){
  return new Promise((resolve,reject)=>{
-  const loader=new GLTFLoader(),draco=new DRACOLoader();
+  const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder),draco=new DRACOLoader();
   draco.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
   loader.setDRACOLoader(draco);
-  loader.load(url,g=>{draco.dispose();resolve(g.scene)},undefined,err=>{draco.dispose();reject(err)});
+  loader.load(url,g=>{draco.dispose();resolve(g.scene)},event=>{
+  if(state.loading&&event.total>0)
+   $('muscle-status').textContent=`Descargando mallas detalladas… ${Math.round(event.loaded/event.total*100)}%`;
+ },err=>{draco.dispose();reject(err)});
  });
 }
 $('muscle-file').addEventListener('change',async(event)=>{
@@ -195,12 +260,18 @@ $('muscle-file').addEventListener('change',async(event)=>{
   const meshes=[];model.traverse(obj=>{if(obj.isMesh)meshes.push({isMesh:true,name:meshName(obj),geometry:obj.geometry})});
   const audit=auditMuscleMeshList(meshes);
   if(!audit.acceptable)throw new Error('Se necesitan al menos dos tipos musculares identificados y geometría triangular.');
-  acceptModel(model,audit,{demo:false});
+  acceptModel(model,audit,{demo:false,kind:'import'});
   closeDrawers();
  }catch(error){status.textContent='No se pudo cargar el modelo: '+(error?.message||'error desconocido');console.error(error)}
  finally{URL.revokeObjectURL(url);event.target.value=''}
 });
 $('muscle-regions').addEventListener('change',event=>changeRegion(event.target.value));
+$('muscle-layer').addEventListener('change',event=>{
+ state.layerMode=event.target.value;state.selected=null;state.isolate=false;
+ clearInfo();refreshVisibility();renderList();
+ const subset=state.entries.filter(e=>(state.region==='all'||e.region===state.region)&&layerMatches(e,state.layerMode));
+ if(subset.length)focusOnMeshes(subset.map(e=>e.mesh));
+});
 $('muscle-search').addEventListener('input',event=>{state.query=event.target.value.trim().toLowerCase();renderList()});
 $('muscle-isolate').addEventListener('click',()=>{
  if(!state.selected)return;
@@ -209,8 +280,8 @@ $('muscle-isolate').addEventListener('click',()=>{
 });
 $('muscle-all').addEventListener('click',()=>changeRegion('all'));
 $('muscle-reset').addEventListener('click',()=>{
- state.selected=null;state.isolate=false;state.query='';state.region='all';
- $('muscle-search').value='';$('muscle-regions').value='all';
+ state.selected=null;state.isolate=false;state.query='';state.region='all';state.layerMode='all';
+ $('muscle-search').value='';$('muscle-regions').value='all';$('muscle-layer').value='all';
  refreshVisibility();renderList();clearInfo();
  if(state.entries.length)focusOnMeshes(state.entries.map(e=>e.mesh));
 });
@@ -239,6 +310,35 @@ function openDrawer(id,search=false){
 $('muscle-bubble-import').addEventListener('click',()=>$('muscle-file').click());
 $('muscle-demo-import').addEventListener('click',()=>$('muscle-file').click());
 $('muscle-demo-restore').addEventListener('click',showBuiltInDemo);
+$('muscle-bones-toggle').addEventListener('click',()=>{
+ state.bonesVisible=!state.bonesVisible;refreshVisibility();
+});
+async function loadDetailedModel(){
+ if(state.loading)return;
+ state.loading=true;
+ for(const id of ['muscle-load-detailed','muscle-load-detailed-nav'])$(id).disabled=true;
+ $('muscle-status').textContent='Descargando mallas de Écorché (aprox. 5,7 MB)…';
+ try{
+  const model=await loadGLB(DETAILED_MODEL.url);
+  const meshes=[];
+  model.traverse(obj=>{if(obj.isMesh)meshes.push({name:meshName(obj),userData:obj.userData})});
+  const audit=detailAudit(meshes);
+  if(audit.total<20||audit.layers.superficial<5||audit.layers.deep<5){
+   throw new Error('El modelo no contiene suficientes músculos identificables con ambas capas.');
+  }
+  acceptModel(model,audit,{kind:'detailed'});
+  closeDrawers();
+ }catch(error){
+  console.error('No fue posible cargar Écorché:',error);
+  $('muscle-status').textContent=
+   'No se pudo cargar el modelo detallado. Conservamos el modelo anterior. Comprueba tu conexión o importa un GLB local.';
+ }finally{
+  state.loading=false;
+  for(const id of ['muscle-load-detailed','muscle-load-detailed-nav'])$(id).disabled=false;
+ }
+}
+$('muscle-load-detailed').addEventListener('click',loadDetailedModel);
+$('muscle-load-detailed-nav').addEventListener('click',loadDetailedModel);
 $('muscle-guide-toggle').addEventListener('click',()=>{
  if(!state.guide)return;
  state.guideVisible=!state.guideVisible;

@@ -5,7 +5,7 @@
  <meta name="viewport" content="width=device-width,initial-scale=1.0">
  <meta name="theme-color" content="#04080c">
  <meta name="description" content="Atlas: explora en 3D una demostración muscular esquemática y carga modelos GLB segmentados para revisarlos.">
- <title>ATLAS · Laboratorio muscular 3D</title>
+ <title>ATLAS · Musculatura detallada 3D</title>
  <link rel="preconnect" href="https://fonts.googleapis.com">
  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600&display=swap" rel="stylesheet">
@@ -40,14 +40,21 @@
     <small>La demostración no representa una anatomía precisa. Los datos OINA y los modelos reales requieren validación.</small>
    </div>
    <section class="muscle-demo-banner" id="muscle-demo-banner" hidden aria-label="Advertencia de geometría demostrativa">
-    <span class="eyebrow">PROTOTIPO · GEOMETRÍA ESQUEMÁTICA</span>
-    <strong>Explora músculos seleccionables en 3D</strong>
-    <p>Las formas y ubicaciones son ilustrativas, no anatómicamente exactas. No usar para estudiar inserciones.</p>
+    <span class="eyebrow" id="muscle-banner-label">PROTOTIPO · GEOMETRÍA ESQUEMÁTICA</span>
+    <strong id="muscle-banner-title">Explora músculos seleccionables en 3D</strong>
+    <p id="muscle-banner-description">Las formas y ubicaciones son ilustrativas, no anatómicamente exactas. No usar para estudiar inserciones.</p>
     <div class="demo-banner-actions">
      <button type="button" id="muscle-guide-toggle" aria-pressed="true">Ocultar silueta</button>
-     <button type="button" id="muscle-demo-import">Importar GLB real ↗</button>
+     <button type="button" id="muscle-load-detailed">Cargar modelo anatómico detallado</button>
+     <button type="button" id="muscle-bones-toggle" hidden aria-pressed="false">Mostrar esqueleto</button>
+     <button type="button" id="muscle-demo-import">Importar mi GLB ↗</button>
     </div>
    </section>
+   <div class="muscle-source-credit" id="muscle-source-credit" hidden>
+    Fuente 3D: <a href="https://github.com/Charleeh/ecorche" target="_blank" rel="noopener noreferrer">Écorché / BodyParts3D / Z-Anatomy</a>
+    · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>
+    · modelo adaptado visualmente (colores y visibilidad)
+   </div>
    <div class="muscle-current" id="muscle-current" hidden>
     <span>ESTRUCTURA MUSCULAR</span><strong id="muscle-active-name">Músculo seleccionado</strong>
     <button type="button" id="muscle-open-info">Consultar ficha ↗</button>
@@ -67,8 +74,20 @@
   <aside class="muscle-drawer muscle-navigation" id="muscle-sidebar" aria-label="Regiones y búsqueda de músculos" hidden>
    <div class="drawer-head"><div><span class="eyebrow">EXPLORAR</span><h2>Regiones y músculos</h2></div><button type="button" id="muscle-close-nav" aria-label="Cerrar menú">×</button></div>
    <div class="drawer-body">
-    <div class="demo-drawer-tools"><strong>Modelo de demostración</strong><p>18 tipos de músculos, representados de ambos lados con volúmenes aproximados. No equivale a un atlas anatómico preciso.</p><button type="button" id="muscle-demo-restore">Volver al ejemplo 3D</button></div>
-    <label for="muscle-file">Modelo muscular GLB</label>
+    <div class="demo-drawer-tools">
+     <strong>Modelos disponibles</strong>
+     <p><b>Detallado:</b> fuente abierta Écorché (músculos superficiales, profundos y huesos). Se descarga al seleccionarlo; tamaño aproximado 5,7 MB. Requiere conexión a Internet.</p>
+     <button type="button" id="muscle-load-detailed-nav">Abrir modelo anatómico detallado</button>
+     <p><b>Demostración:</b> 18 tipos con volúmenes aproximados bilaterales; útil para revisar la interfaz, no la forma anatómica.</p>
+     <button type="button" id="muscle-demo-restore">Usar ejemplo esquemático</button>
+    </div>
+    <label for="muscle-layer">Profundidad muscular</label>
+    <select id="muscle-layer" aria-label="Filtrar músculos por profundidad">
+     <option value="all">Todas las capas</option>
+     <option value="superficial">Músculos superficiales</option>
+     <option value="deep">Músculos profundos</option>
+    </select>
+    <label for="muscle-file">Importar otro modelo GLB local</label>
     <input id="muscle-file" type="file" accept=".glb,model/gltf-binary">
     <p class="note">Si tienes un GLB anatómico segmentado (máximo 150 MB), sustituye el ejemplo. Se procesa únicamente en tu navegador; revisa licencia, mallas y orientación.</p>
     <label for="muscle-regions">Región anatómica</label>
@@ -86,12 +105,14 @@
     <div id="muscle-ficha" hidden>
      <h2 class="selected-muscle" id="muscle-name"></h2>
      <p id="muscle-region"></p>
+     <div class="muscle-metadata"><div><b>Capa</b><span id="muscle-info-layer">Sin clasificar</span></div><div><b>Nombre en fuente</b><span id="muscle-info-original">—</span></div><div><b>Identificador FMA</b><span id="muscle-info-fma">No disponible</span></div></div>
      <section class="field"><strong>ORIGEN</strong><p id="muscle-origin"></p></section>
      <section class="field"><strong>INSERCIÓN</strong><p id="muscle-insertion"></p></section>
      <section class="field"><strong>INERVACIÓN</strong><p id="muscle-innervation"></p></section>
      <section class="field"><strong>ACCIÓN</strong><p id="muscle-action"></p></section>
     </div>
-    <section class="field"><strong>LÍMITE ACADÉMICO</strong><p>La posición de las mallas y las fichas OINA necesitan revisión con Moore 9.ª y Rouvière/Delmas 11.ª ed. Esta vista es preliminar.</p></section>
+    <section class="field"><strong>LÍMITE ACADÉMICO</strong><p>El modelo detallado es una adaptación educativa de fuentes abiertas. No se ha auditado exhaustivamente para Atlas. La posición de las mallas y las fichas OINA están pendientes de verificación con Moore 9.ª y Rouvière/Delmas 11.ª ed. Esta vista no sirve para diagnóstico.</p>
+    <p>Créditos: <a href="https://github.com/Charleeh/ecorche" target="_blank" rel="noopener noreferrer">Écorché</a>, basado en BodyParts3D (DBCLS) y Z-Anatomy (Gauthier Kervyn). Geometría bajo <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p></section>
    </div>
   </aside>
  </div>

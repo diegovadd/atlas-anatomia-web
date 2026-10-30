@@ -45,8 +45,8 @@ export const DEMO_GUIDE=Object.freeze([
 
 export function demoMeshSpecifications(){
  return DEMO_MUSCLES.flatMap(({key,x,y,z,w,h,d,tilt})=>[
-  Object.freeze({name:key+'.R',x:-x,y,z,w,h,d,tilt:-tilt}),
-  Object.freeze({name:key+'.L',x,y,z,w,h,d,tilt})
+  Object.freeze({name:key.charAt(0).toUpperCase()+key.slice(1)+'.R',x:-x,y,z,w,h,d,tilt:-tilt}),
+  Object.freeze({name:key.charAt(0).toUpperCase()+key.slice(1)+'.L',x,y,z,w,h,d,tilt})
  ]);
 }
 

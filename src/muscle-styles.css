@@ -148,3 +148,50 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
  .muscle-demo-banner{max-height:35vh;overflow-y:auto}
  .muscle-app .viewer-actions{max-height:80px;overflow-x:auto}
 }
+
+
+/* Etapa 2: carga de malla anatómica abierta, capas y crédito permanente. */
+.muscle-demo-banner{width:min(410px,calc(100% - 245px))}
+.muscle-demo-banner strong{font-size:20px}
+.muscle-demo-banner p{font-size:12.5px;line-height:1.65}
+#muscle-load-detailed,#muscle-load-detailed-nav{
+ color:#0a2520;background:#b8dcd0;border-color:#b8dcd0;font-weight:600;
+}
+#muscle-load-detailed:hover:not(:disabled),
+#muscle-load-detailed-nav:hover:not(:disabled){background:#daefe8;border-color:#daefe8}
+#muscle-load-detailed:disabled,#muscle-load-detailed-nav:disabled{opacity:.48}
+.demo-drawer-tools button{justify-self:start}
+.demo-drawer-tools p b{color:#e5f1ed;font-weight:600}
+.muscle-source-credit{
+ position:absolute;z-index:5;right:20px;top:22px;
+ width:min(300px,calc(100% - 150px));
+ padding:11px 12px;border-radius:9px;
+ background:rgba(8,19,27,.88);border:1px solid #365354;
+ font-size:11px;line-height:1.6;color:#b6c9c4;
+}
+.muscle-source-credit a,.muscle-information .field a{
+ color:#a9dfcf;text-underline-offset:3px;
+}
+.muscle-metadata{
+ display:grid;gap:10px;margin:16px 0 18px;
+ padding:13px;border:1px solid #344c50;border-radius:10px;
+ background:#132631;
+}
+.muscle-metadata div{display:flex;justify-content:space-between;gap:14px;align-items:baseline}
+.muscle-metadata b{flex:none;color:#a5c4bd;font-size:11px;font-weight:600;letter-spacing:.02em}
+.muscle-metadata span{text-align:right;color:#e7eeeb;font-size:12px;overflow-wrap:anywhere}
+.muscle-app #muscle-layer{border-color:#4b7772;background:#173332}
+.muscle-demo-banner button[aria-pressed="true"]{background:#31655b;border-color:#7eaba0}
+@media(max-width:900px) and (min-width:751px){
+ .muscle-demo-banner{width:min(330px,calc(100% - 225px))}
+ .muscle-source-credit{width:220px;font-size:10px}
+}
+@media(max-width:750px){
+ .muscle-demo-banner{top:148px;left:11px;width:min(335px,calc(100% - 22px));padding:12px}
+ .muscle-demo-banner strong{font-size:17px}
+ .muscle-demo-banner p{font-size:11px;line-height:1.4}
+ .muscle-source-credit{
+  top:auto;bottom:112px;right:12px;
+  width:min(300px,calc(100% - 24px));padding:8px 10px;font-size:10px
+ }
+}
