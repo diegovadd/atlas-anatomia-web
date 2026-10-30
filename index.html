@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <meta name="theme-color" content="#04080c" />
+  <meta name="description" content="Atlas — explorador anatómico 3D para el estudio del sistema óseo humano, con regiones y estructuras seleccionables." />
+  <title>Atlas · Explorador anatómico 3D</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./src/styles.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script src="./src/main.js" type="module"></script>
+</head>
+<body>
+  <div id="app" class="study-focus lab-layout">
+    <aside class="sidebar" id="sidebar" aria-label="Navegación anatómica">
+      <div class="brand"><button type="button" class="focus-panel-close" id="focus-close-nav" aria-label="Cerrar navegación">×</button><div class="brand-symbol"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 2.6 29 26.6H3L16 2.6Z" stroke="currentColor" stroke-width="1.5"/><path d="M16 10.3 23.8 24.7H8.2L16 10.3Z" fill="currentColor" opacity=".75"/><circle cx="16" cy="20.8" r="2.1" fill="#0b111a"/></svg></div><div><div class="brand-name">ATLAS<span class="brand-dot">.</span></div><div class="brand-sub">LABORATORIO ANATÓMICO</div></div></div>
+      <div class="sidebar-scroll">
+        
+        <div class="sidebar-section">
+          <div class="section-caption">SISTEMAS ANATÓMICOS</div><p class="sidebar-intro">Elige un sistema para explorar sus estructuras.</p>
+          <div class="system-list">
+            <button type="button" class="system active" id="system-skeletal"><span class="system-mark">◈</span><span>Óseo</span><span class="on-label">ACTIVO</span></button>
+            <details class="upcoming-systems"><summary>Otros sistemas · próximamente</summary><div class="upcoming-systems-list"><a class="system muscle-system-link" href="./musculos.html"><span class="system-mark">∿</span><span>Muscular · piloto</span><span class="lock">↗</span></a>
+            <button type="button" class="system disabled" disabled><span class="system-mark">⌁</span><span>Arterial y venoso</span><span class="lock">↗</span></button>
+            <button type="button" class="system disabled" disabled><span class="system-mark">✳</span><span>Nervioso</span><span class="lock">↗</span></button>
+            <button type="button" class="system disabled" disabled><span class="system-mark">⋈</span><span>Tendones y ligamentos</span><span class="lock">↗</span></button></div></details>
+          </div>
+        </div>
+        <div class="sidebar-section regions-section" id="regions-section">
+          <div class="section-header"><div class="section-caption">REGIONES ANATÓMICAS</div><button class="text-action" id="show-all">Ver todo</button></div>
+          <div id="regions" class="regions"></div>
+        </div>
+        <div class="sidebar-section structures-section" id="structures-section">
+          <div class="section-header"><div class="section-caption" id="structures-heading">ESTRUCTURAS</div><span class="structure-count" id="structure-count">0</span></div>
+          <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg><input id="search" placeholder="Buscar hueso..." aria-label="Buscar estructura anatómica" autocomplete="off"/><span>/</span></label>
+          <div class="filter-row" id="skull-filters" hidden><button class="filter active" data-filter="all">Todos</button><button class="filter" data-filter="neuro">Neurocráneo</button><button class="filter" data-filter="face">Viscerocráneo</button></div>
+          <details class="skull-inventory" id="skull-inventory" hidden>
+            <summary id="skull-inventory-summary">Inventario del cráneo</summary>
+            <div id="skull-inventory-missing" class="skull-inventory-details"></div>
+          </details>
+          <details class="advanced-skull" id="advanced-skull"><summary>Modelo del cráneo · opciones avanzadas</summary><section class="skull-detail" id="skull-detail-section" aria-label="Modelo de detalle del cráneo" hidden>
+            <div class="section-caption">DETALLE GEOMÉTRICO · CRÁNEO</div>
+            <strong id="skull-detail-title">ESQUELETO ORIGINAL</strong>
+            <div class="skull-detail-metrics">
+              <span>Modelo original</span><small id="skull-detail-baseline">Sin datos</small>
+              <span>Archivo de detalle</span><small id="skull-detail-alternate">Sin archivo de detalle</small>
+            </div>
+            <div class="skull-detail-buttons">
+              <button type="button" id="skull-detail-upload">Importar cráneo GLB</button>
+              <button type="button" id="skull-detail-switch" disabled>Ver cráneo importado</button>
+              <input id="skull-detail-file" type="file" accept=".glb,model/gltf-binary" hidden/>
+            </div>
+            <p id="skull-detail-audit">Puedes importar un cráneo segmentado. No se envía al servidor.</p>
+            <p role="status" aria-live="polite" id="skull-detail-status"></p>
+          </section></details>
+          <div class="dual-selection-controls" aria-label="Controles de selección múltiple">
+            <button type="button" id="btn-multi-select" aria-pressed="false">Selección múltiple: desactivada</button>
+            <div id="selected-summary" role="status" aria-live="polite">Ningún hueso seleccionado</div>
+            <p id="selection-mode-hint">Activa el botón y selecciona dos huesos con clics normales, en la lista o el modelo 3D. Ctrl/Shift + clic también funciona.</p>
+            <div class="dual-selection-buttons">
+              <button type="button" id="btn-pair" disabled>Seleccionar par</button>
+              <button type="button" id="btn-clear-selection" disabled>Limpiar selección</button>
+            </div>
+          </div>
+          <div id="structure-list" class="structure-list"><div class="small-help">Cargando estructuras...</div></div>
+        </div>
+      </div>
+      <div class="sidebar-foot"><div class="progress-caption"><span><i class="progress-dot"></i> DESARROLLO · ETAPA 01</span><strong>Sistema óseo</strong></div><div class="progress-track"><i></i></div><small>Atlas 3D · Proyecto educativo</small></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar"><div class="breadcrumbs"><span class="lab-wordmark">ATLAS<span class="wordmark-dot">.</span></span><span class="lab-divider">/</span><strong id="crumb-region">Cuerpo completo</strong><span class="lab-beta">LAB · VISTA EXPERIMENTAL</span></div><div class="top-actions"><div class="data-indicator"><i></i><span id="model-status-short">Conectando modelo</span></div><button type="button" class="top-button focus-mode-btn" id="btn-focus-mode" aria-pressed="true" title="Cambiar a vista clásica (F)">◫ <span>Vista clásica</span></button><button class="top-button" id="btn-help" title="Mostrar ayuda">? <span>Ayuda</span></button><button class="top-button special" id="btn-upload">＋ <span>Importar GLB</span></button><input id="model-file" type="file" accept=".glb,.gltf" hidden /></div></header>
+
+      <section class="workspace">
+        <div class="viewport" id="viewport"><canvas id="scene" aria-label="Modelo tridimensional del sistema óseo humano"></canvas>
+          <nav class="bubble-rail" id="bubble-rail" aria-label="Herramientas anatómicas rápidas">
+            <button type="button" class="bubble-action" id="bubble-regions" aria-label="Abrir regiones anatómicas" title="Regiones"><span class="bubble-icon">◈</span><span class="bubble-label">Regiones</span></button>
+            <button type="button" class="bubble-action" id="bubble-search" aria-label="Buscar estructuras" title="Buscar"><span class="bubble-icon">⌕</span><span class="bubble-label">Buscar</span></button>
+            <button type="button" class="bubble-action" id="bubble-select" aria-label="Abrir lista y selección de huesos" title="Selección"><span class="bubble-icon">☷</span><span class="bubble-label">Selección</span></button>
+            <span class="bubble-divider" aria-hidden="true"></span>
+            <button type="button" class="bubble-action" id="bubble-isolate" aria-label="Aislar estructura seleccionada" title="Aislar" disabled><span class="bubble-icon">◎</span><span class="bubble-label">Aislar</span></button>
+            <button type="button" class="bubble-action" id="bubble-info" aria-label="Abrir ficha anatómica" title="Ficha"><span class="bubble-icon">ⓘ</span><span class="bubble-label">Ficha</span></button>
+            <button type="button" class="bubble-action" id="bubble-annotations" aria-label="Abrir flechas anatómicas" title="Flechas"><span class="bubble-icon">⌁</span><span class="bubble-label">Flechas</span></button>
+            <button type="button" class="bubble-action" id="bubble-settings" aria-label="Abrir ajustes de visualización" title="Ajustes"><span class="bubble-icon">⚙</span><span class="bubble-label">Ajustes</span></button>
+            <span class="bubble-divider" aria-hidden="true"></span>
+            <a class="bubble-action bubble-muscular" id="bubble-muscles" href="./musculos.html" aria-label="Abrir visor muscular experimental" title="Muscular · piloto"><span class="bubble-icon">∿</span><span class="bubble-label">Músculos</span></a>
+          </nav>
+          <div class="focus-toolbar" id="focus-toolbar" role="group" aria-label="Controles del modo enfoque" hidden><span class="focus-toolbar-tag">VISTA LIMPIA</span><button type="button" id="focus-nav" aria-expanded="false" aria-controls="sidebar">Regiones</button><button type="button" id="focus-info" aria-expanded="false" aria-controls="inspector">Ficha y flechas</button><button type="button" id="focus-show-region" hidden>Mostrar región</button><button type="button" id="focus-leave" title="Salir del modo enfoque (F)">Salir ×</button></div>
+          <div id="annotation-overlay" class="annotation-overlay" aria-label="Flechas anatómicas sobre el modelo">
+            <svg class="annotation-svg" aria-hidden="true">
+              <defs><marker id="annotation-arrowhead" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L7 4.5 L1 8" fill="none" stroke="#f0c98c" stroke-width="1.6"/></marker></defs>
+              <g id="annotation-arrow-items"></g>
+            </svg>
+            <div id="annotation-labels" class="annotation-labels"></div>
+          </div>
+          <div class="viewport-hud top-left"><div class="eyebrow"><span class="eyebrow-line"></span> ATLAS INTERACTIVO · V1.0</div><h1 id="viewer-title">Sistema <em>óseo</em></h1><p id="viewer-subtitle">Explora el cuerpo humano en tres dimensiones.<br>Selecciona una región o un hueso para conocerlo.</p></div>
+          <div class="viewport-hud top-right"><div class="view-indicator"><span class="view-indicator-dot"></span> MODELO 3D INTERACTIVO</div><div class="axis-guide"><span class="axis-y">Y</span><span class="axis-mark"></span><span class="axis-x">X</span></div></div>
+          <div class="loading-overlay" id="loading-overlay"><div class="loading-orbit"><div class="loading-ring"></div><span>◈</span></div><strong id="loading-title">Preparando anatomía 3D</strong><p id="loading-message">Cargando geometrías anatómicas individualizadas…</p><div class="load-progress"><i id="load-progress"></i></div><button class="retry-btn" id="retry-model" hidden>Volver a intentar</button></div>
+          <div class="study-selection" id="study-selection" hidden aria-live="polite"><span>ESTRUCTURA ACTUAL</span><strong id="study-selection-name">Sistema óseo</strong><button type="button" id="study-open-info" aria-label="Consultar ficha de la estructura seleccionada">Ver ficha ↗</button></div>
+          <div class="focus-pill" id="focus-pill" hidden><span id="focus-pill-text">Cráneo</span><button id="clear-focus" aria-label="Mostrar todos los huesos">×</button></div>
+          <div class="viewport-bottom"><div class="interaction-hint"><span class="mouse-icon">◉</span><span>Arrastrar para girar</span><b>·</b><span>Rueda para acercar</span><b>·</b><span>Clic para seleccionar</span></div><div class="viewport-buttons"><button title="Vista anterior" data-view="front">Ant.</button><button title="Vista posterior" data-view="back">Post.</button><button title="Vista lateral" data-view="side">Lat.</button><span class="button-separator"></span><button id="btn-center" title="Centrar modelo">⌗</button><button id="btn-reset" title="Restablecer vista">↺</button></div></div>
+          <div class="frame-number">FIG. 001 — ANATOMÍA HUMANA</div>
+        </div>
+
+        <aside class="inspector" id="inspector"><div class="inspector-head"><button type="button" class="focus-panel-close" id="focus-close-info" aria-label="Cerrar ficha anatómica">×</button><div class="section-caption">FICHA ANATÓMICA</div><span class="inspector-tag">FICHA DE ESTUDIO</span></div>
+          <div class="inspector-scroll"><div class="info-top"><div class="info-index">ESTRUCTURA SELECCIONADA <span id="selected-index">00 / 00</span></div><div class="info-visual"><span id="info-icon">◈</span><div class="info-rings"></div></div><span class="info-type" id="info-type">SISTEMA ÓSEO</span><h2 id="info-title">Explora cada<br>estructura.</h2><p class="latin" id="info-latin">Anatomia ossium</p></div>
+          <div class="info-divider"></div><div class="info-section"><div class="info-label">DESCRIPCIÓN</div><p id="info-desc">Selecciona un hueso desde el modelo 3D o desde la lista de la izquierda para ver sus características anatómicas.</p></div><div class="info-section"><div class="info-label">LOCALIZACIÓN</div><p id="info-location">Explora las regiones: cráneo, columna vertebral, tórax, extremidades y cintura pélvica.</p></div><details class="inspector-more" id="inspector-more"><summary>Más información y referencias</summary><div class="info-section"><div class="info-label">FUNCIÓN</div><p id="info-function">Sostén, protección de órganos, movimiento, reserva mineral y hematopoyesis.</p></div><div class="info-section" id="clinical-section" hidden><div class="info-label">CORRELACIÓN CLÍNICA</div><p id="info-clinical"></p></div><div class="info-section reference-section">
+            <div class="info-label">BIBLIOGRAFÍA PRINCIPAL</div>
+            <div class="source-row" id="book-sources"></div>
+            <p id="book-review-note" class="bibliography-note">Borrador informativo: pendiente de cotejo con Moore y Rouvière. No se atribuyen páginas aún.</p>
+          </div><div class="source-row" id="sources" hidden></div></details></div>
+
+        <details class="annotation-disclosure" id="annotation-disclosure" hidden><summary>Accidentes óseos · flechas 3D</summary><section class="annotation-panel" id="annotation-panel" aria-label="Flechas de accidentes óseos" hidden>
+          <div class="info-label">DETALLES ANATÓMICOS · FLECHAS 3D</div>
+          <p id="annotation-instructions" class="annotation-help">Aísla un hueso del cráneo para marcar sus accidentes anatómicos.</p>
+          <label for="annotation-name">Nombre del detalle</label>
+          <input id="annotation-name" type="text" list="annotation-suggestions" maxlength="72" autocomplete="off" placeholder="Ej. apófisis piramidal" aria-describedby="annotation-warning">
+          <datalist id="annotation-suggestions"></datalist>
+          <label for="annotation-description">Nota de estudio (opcional)</label>
+          <textarea id="annotation-description" maxlength="350" rows="2" placeholder="Describe brevemente la estructura, sin inventar referencias."></textarea>
+          <div class="annotation-actions">
+            <button id="annotation-start" type="button" disabled aria-pressed="false">Añadir flecha al hueso</button>
+            <button id="annotation-cancel" type="button" hidden>Cancelar</button>
+          </div>
+          <p id="annotation-status" role="status" aria-live="polite"></p>
+          <div class="annotation-list-head"><strong>Flechas guardadas</strong><span id="annotation-count">0 flechas</span></div>
+          <div id="annotation-list" class="annotation-list"></div>
+          <p id="annotation-warning" class="annotation-warning">Los nombres son sugerencias; el punto exacto lo marcas tú. Las posiciones no están verificadas con Moore ni Rouvière.</p>
+        </section></details>
+        <div class="inspector-actions"><button id="btn-isolate" disabled><span>◎</span> Aislar estructuras</button><button id="btn-ghost" disabled><span>◌</span> Transparencia</button></div>
+          <details class="visual-options" id="visual-options"><summary>Calidad, iluminación y opacidad</summary><div class="inspector-bottom">
+            <label class="auto-focus-option" for="auto-focus-isolate"><input id="auto-focus-isolate" type="checkbox" checked> Activar modo enfoque al aislar un hueso</label>
+            <div class="info-label">OPACIDAD DEL MODELO</div>
+            <div class="opacity-row"><span>◐</span><input type="range" id="opacity" min="20" max="100" step="5" value="100" aria-label="Opacidad del modelo"/><span id="opacity-value">100%</span></div>
+            <div class="display-settings">
+              <div class="display-settings-header"><div class="info-label">APARIENCIA DEL MODELO 3D</div><button id="reset-render" type="button" title="Restaurar valores predeterminados">Restablecer</button></div>
+              <label for="quality-mode">Calidad gráfica</label>
+              <select id="quality-mode" aria-describedby="quality-note">
+                <option value="ahorro">Ahorro · más fluido</option>
+                <option value="equilibrada" selected>Equilibrada · recomendada</option>
+                <option value="alta">Alta · más nítida</option>
+              </select>
+              <div class="display-settings-header"><label for="light-level">Iluminación</label><output id="light-value" for="light-level">90%</output></div>
+              <input type="range" id="light-level" min="60" max="120" step="5" value="90" aria-label="Iluminación del modelo"/>
+              <p id="quality-note">La calidad cambia la nitidez en pantalla; el detalle anatómico depende de la malla original.</p>
+            </div>
+            <p><span class="legend-dot"></span> Mallas de referencia: Z-Anatomy / BodyParts3D</p>
+          </div></details>
+        </aside>
+      </section>
+      <footer class="footer"><span>ATLAS · ESTUDIO ANATÓMICO</span><span>Textos de referencia: Moore y Rouvière · Mallas: <a href="https://github.com/Z-Anatomy/Models-of-human-anatomy" target="_blank" rel="noopener noreferrer">Modelo Z-Anatomy / BodyParts3D, CC BY-SA</a></span><span>ETAPA 01 / 07</span></footer>
+    </main>
+  </div>
+  <div class="dialog-backdrop" id="help-dialog" hidden><div class="dialog"><button class="dialog-close" id="close-help">×</button><span class="dialog-kicker">GUÍA RÁPIDA</span><h2>Explorar Atlas</h2><p>Utiliza el mouse para girar, acercar y seleccionar cualquier hueso disponible en el modelo.</p><div class="dialog-instructions"><div><b>01</b><span>Selecciona <strong>Cráneo</strong> en regiones para aislarlo y visualizar sus componentes.</span></div><div><b>02</b><span>Filtra por <strong>neurocráneo</strong> o <strong>viscerocráneo</strong> y elige cada hueso.</span></div><div><b>03</b><span>Usa <strong>Aislar</strong> y <strong>Transparencia</strong> para estudiarlo sin estructuras superpuestas.</span></div></div><p class="dialog-note">Pulsa <strong>F</strong> para activar o desactivar el modo enfoque. Al aislar un hueso, el visor se amplía automáticamente. Usa <strong>Regiones</strong> y <strong>Ficha y flechas</strong> para consultar los paneles sin salir de la vista limpia.</p><p class="dialog-note">El primer uso requiere conexión a Internet. Puedes guardar un archivo <code>skeleton.glb</code> en la carpeta <code>assets/</code> o importarlo localmente.</p><button class="dialog-primary" id="help-understood">Entendido</button></div></div>
+</body>
+</html>

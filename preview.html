@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+ <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+ <meta name="theme-color" content="#04080c">
+ <title>ATLAS · Laboratorio visual</title>
+ <link rel="preconnect" href="https://fonts.googleapis.com">
+ <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600&display=swap" rel="stylesheet">
+ <style>
+ :root{color-scheme:dark}*{box-sizing:border-box}
+ body{margin:0;min-height:100vh;padding:22px;background:radial-gradient(ellipse at 55% 25%,#1a2932,#03070b 68%);color:#edf3f0;font-family:'IBM Plex Sans',sans-serif}
+ .shell{max-width:1050px;margin:0 auto}.top{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #2d4048;padding:12px 0 20px}
+ .brand{font:600 24px 'IBM Plex Serif',serif;letter-spacing:.1em}.brand span{color:#a2d4c8}
+ .hint{font-size:11px;color:#a4bdb6;letter-spacing:.14em}
+ main{padding:70px 0 60px}.eyebrow{font-size:11px;letter-spacing:.14em;color:#a8d6ca}
+ h1{font:500 clamp(36px,6vw,66px)/1.08 'IBM Plex Serif',Georgia,serif;max-width:760px;margin:15px 0 21px;letter-spacing:-.04em}
+ .desc{max-width:690px;line-height:1.75;color:#b7c9ce;font-size:16px}
+ .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:19px;margin-top:45px}
+ .card{display:flex;flex-direction:column;gap:12px;min-height:250px;padding:27px;border:1px solid #38565a;border-radius:18px;background:#111e26de;text-decoration:none;color:inherit;transition:transform .15s,background .15s}
+ .card:hover{transform:translateY(-3px);background:#1b3035}
+ .card small{color:#a5d2c6;font-size:11px;letter-spacing:.1em}
+ .card strong{font:500 29px 'IBM Plex Serif',Georgia,serif}
+ .card p{color:#b5c8cb;font-size:14px;line-height:1.6;margin:0;flex:1}
+ .card span{color:#d5f0e8;font-size:13px}
+ .card.muscle{border-color:#62524e}
+ .card.muscle small,.card.muscle span{color:#e6c4ae}
+ .notice{margin-top:35px;padding:18px 20px;border-left:2px solid #8eafa5;background:#0a151d;color:#abbec2;font-size:13px;line-height:1.65}
+ a:focus-visible{outline:2px solid #a3e6d6;outline-offset:3px}
+ @media(max-width:650px){main{padding:45px 0}.cards{grid-template-columns:1fr}.hint{font-size:9px}.card{min-height:220px}}
+ </style>
+</head>
+<body><div class="shell">
+ <header class="top"><div class="brand">ATLAS<span>.</span></div><div class="hint">LABORATORIO / RAMA EXPERIMENTAL</div></header>
+ <main>
+  <div class="eyebrow">NUEVA EXPERIENCIA ANATÓMICA</div>
+  <h1>La anatomía al centro de la experiencia.</h1>
+  <p class="desc">Prueba la nueva interfaz oscura, las herramientas en burbujas y las fichas desplegables. Este laboratorio funciona en el navegador y también puedes ejecutarlo localmente.</p>
+  <div class="cards">
+   <a class="card" href="./index.html"><small>01 / EXPLORACIÓN</small><strong>Sistema óseo</strong><p>Visor interactivo en vista inmersiva, búsqueda, aislamiento, doble selección y flechas para accidentes del cráneo.</p><span>Abrir visor óseo ↗</span></a>
+   <a class="card muscle" href="./musculos.html"><small>02 / PROTOTIPO</small><strong>Sistema muscular</strong><p>Visor 3D experimental para importar un GLB segmentado, filtrar músculos por región y ver fichas OINA pendientes de revisión.</p><span>Abrir laboratorio muscular ↗</span></a>
+  </div>
+  <div class="notice"><strong>Estado del proyecto:</strong> el nuevo diseño está en revisión. No se considera concluida la validación anatómica. El visor muscular no incluye un archivo 3D propio por defecto y requiere un GLB adecuado. Modelos y bibliografía pendientes de auditoría médica.</div>
+ </main>
+</div></body></html>

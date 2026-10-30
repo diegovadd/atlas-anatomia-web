@@ -1,0 +1,88 @@
+:root{color-scheme:dark;--bg:#03070b;--line:#2a4148;--text:#eef1ee;--muted:#9eafb4;--accent:#a8d4c8}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:15px 'IBM Plex Sans','Segoe UI',Arial,sans-serif}
+button,input,select{font:inherit}
+button{cursor:pointer}
+button:disabled{cursor:not-allowed;opacity:.36}
+a{color:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #a2e3d4;outline-offset:3px}
+.muscle-app{height:100vh;height:100dvh;min-height:0;display:flex;flex-direction:column;position:relative;overflow:hidden;background:#03070b}
+.muscle-top{height:64px;flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 28px;background:#070e15;border-bottom:1px solid #22323a;z-index:10}
+.muscle-brand{display:flex;gap:12px;align-items:center;font-size:14px}
+.muscle-brand>a{font-family:'IBM Plex Serif',Georgia,serif;font-size:23px;font-weight:600;letter-spacing:.1em;text-decoration:none}
+.muscle-brand>a span{color:#a8d4c8}
+.muscle-brand .divider{color:#57717a}
+.muscle-brand strong{font-size:14px;font-weight:500}
+.muscle-brand small{font-size:10px;color:#98b9af;letter-spacing:.12em;border-left:1px solid #39515a;padding-left:12px}
+.back-bone{font-size:13px;text-decoration:none;color:#d6e4e0;padding:9px 12px;border:1px solid #34515a;border-radius:8px}
+.back-bone:hover{background:#20323a}
+.muscle-viewport{position:relative;flex:1;min-height:0;min-width:0;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,#20232b 0%,#12171e 43%,#03070b 100%)}
+.muscle-viewport:before{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 45%,transparent 0 35%,#02050890 100%);z-index:1}
+#muscle-canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
+.eyebrow{font-size:10px;letter-spacing:.12em;color:#9acbbd;font-weight:600}
+.muscle-rail{position:absolute;top:50%;left:20px;transform:translateY(-50%);z-index:5;display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 7px;width:85px;max-height:calc(100% - 35px);overflow-y:auto;scrollbar-width:none;background:#081119e0;border:1px solid #2a4148;border-radius:19px;backdrop-filter:blur(14px);box-shadow:0 15px 40px #0008}
+.muscle-rail::-webkit-scrollbar{display:none}
+.muscle-rail button{flex:none;width:67px;min-height:55px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:center;border:1px solid transparent;border-radius:12px;background:transparent;color:#bcd2cf;font-size:10px;padding:7px 3px}
+.muscle-rail button:hover:not(:disabled){background:#203b40;color:#fff;border-color:#62867b}
+.m-icon{font-size:23px;line-height:1}
+.rail-separator{width:41px;height:1px;background:#314b50;margin:4px 0}
+.muscle-onboarding{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(520px,calc(100% - 265px));z-index:3;text-align:left;padding:35px 36px;border:1px solid #31474f;border-radius:17px;background:#0c151ddc;box-shadow:0 18px 50px #0008;backdrop-filter:blur(13px)}
+.muscle-onboarding h1{font:500 clamp(28px,3.4vw,42px)/1.15 'IBM Plex Serif',Georgia,serif;letter-spacing:-.035em;margin:13px 0 13px}
+.muscle-onboarding h1 em{font-weight:400;font-style:normal;color:#a1d1c5}
+.muscle-onboarding p{line-height:1.7;color:#c3d0d1;font-size:15px;margin:0 0 22px}
+.muscle-onboarding button{border-radius:9px;background:#295348;border:1px solid #668f82;color:#eff8f3;font-size:14px;font-weight:600;padding:13px 18px}
+.muscle-onboarding button span{margin-left:8px}
+.muscle-onboarding small{display:block;font-size:12px;color:#a6b9bd;line-height:1.55;margin-top:17px}
+.muscle-current{position:absolute;left:125px;bottom:28px;z-index:5;max-width:390px;padding:13px 16px;background:#0b161fe3;border:1px solid #37535b;border-radius:11px;display:flex;flex-direction:column;gap:6px;box-shadow:0 10px 30px #0008}
+.muscle-current span{font-size:10px;letter-spacing:.1em;color:#a6c9c0}
+.muscle-current strong{font:500 18px 'IBM Plex Serif',Georgia,serif}
+.muscle-current button{border:0;background:none;color:#a5dccc;font-size:12px;text-align:left;padding:0}
+.viewer-actions{position:absolute;right:20px;bottom:21px;z-index:4;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:7px}
+.viewer-actions button{font-size:12px;border:1px solid #3e545d;border-radius:8px;background:#111e27de;color:#d2e2df;padding:10px 12px}
+.viewer-actions button:hover:not(:disabled){background:#24403d;border-color:#679288}
+.muscle-status{position:absolute;left:135px;top:20px;max-width:min(450px,calc(100% - 280px));z-index:3;color:#afc0c2;font-size:11px;line-height:1.6;padding:9px 13px;margin:0;border:1px solid #20343f;border-radius:8px;background:#08131ab8}
+.muscle-dismiss{position:absolute;inset:64px 0 0;z-index:19;background:#01050b55;border:0}
+.muscle-drawer{position:absolute;top:64px;bottom:0;z-index:20;width:min(390px,93vw);display:flex;flex-direction:column;background:#0a141cf7;border:1px solid #344c54;box-shadow:0 15px 55px #000a}
+.muscle-navigation{left:0;border-radius:0 17px 17px 0}
+.muscle-information{right:0;border-radius:17px 0 0 17px}
+.drawer-head{padding:24px 22px 20px;border-bottom:1px solid #283c44;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.drawer-head h2{font:500 27px 'IBM Plex Serif',Georgia,serif;margin:7px 0 0;line-height:1.2}
+.drawer-head button{background:#182b34;border:1px solid #3d5a63;border-radius:8px;color:#dde9e5;font-size:23px;line-height:1;width:36px;height:36px;flex:none}
+.drawer-body{padding:20px 22px;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.drawer-body label,.list-title{font-size:13px;font-weight:600;color:#d9e4e3}
+.drawer-body input[type=file]{width:100%;font-size:12px;color:#a9bcbf}
+.drawer-body input[type=file]::file-selector-button{border:1px solid #61877e;border-radius:7px;padding:10px;background:#1d3733;color:#e8fff5;margin-right:9px;cursor:pointer}
+.drawer-body select,.drawer-body input[type=search]{width:100%;border-radius:8px;border:1px solid #435b61;background:#152a34;color:#f3f7f3;padding:11px 12px;font-size:13px;min-height:45px}
+.drawer-body .note{font-size:12px;line-height:1.6;color:#a1b6ba;margin:0 0 9px}
+.list-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:9px}
+.list-title span{font-weight:400;color:#a0c0ba;font-size:12px}
+#muscle-list{display:grid;align-content:start;gap:5px;padding-bottom:25px}
+.muscle-option{padding:11px 13px;border:1px solid #2b4048;border-radius:8px;background:#12212a;color:#d9e3e1;text-align:left;font-size:13px}
+.muscle-option.active,.muscle-option[aria-pressed=true]{background:#274d47;border-color:#84b6aa;color:#fff}
+.muscle-empty{font-size:13px;line-height:1.6;color:#a9b8bc}
+#muscle-placeholder,.drawer-body>p,#muscle-region{line-height:1.65;font-size:13px;color:#b3c6c8}
+.selected-muscle{font:500 28px 'IBM Plex Serif',Georgia,serif;margin:0 0 5px}
+.field{border-top:1px solid #31444d;padding:15px 0 3px}
+.field strong{font-size:11px;color:#a7d0c5;letter-spacing:.07em}
+.field p{font-size:13px;line-height:1.65;color:#bacacc;margin:7px 0 0}
+@media(max-width:750px){
+ .muscle-top{height:60px;padding:0 13px}
+ .muscle-brand>a{font-size:18px}
+ .muscle-brand small{display:none}
+ .back-bone{font-size:12px;padding:8px}
+ .muscle-rail{top:9px;left:9px;right:9px;transform:none;width:calc(100% - 18px);max-height:none;display:flex;flex-direction:row;gap:4px;overflow-x:auto;overflow-y:hidden;border-radius:14px;padding:6px}
+ .muscle-rail button{width:60px;min-width:60px;min-height:53px;font-size:10px}
+ .m-icon{font-size:21px}
+ .rail-separator{width:1px;min-width:1px;height:38px}
+ .muscle-onboarding{width:calc(100% - 30px);padding:24px;top:50%}
+ .muscle-onboarding p{font-size:13px}
+ .muscle-onboarding h1{font-size:29px}
+ .muscle-status{top:93px;left:12px;max-width:calc(100% - 24px);font-size:10px}
+ .muscle-current{left:11px;bottom:83px;max-width:calc(100% - 22px);padding:10px 12px}
+ .viewer-actions{left:10px;right:10px;bottom:9px;gap:4px}
+ .viewer-actions button{font-size:10px;padding:10px 7px}
+ .muscle-dismiss{top:60px}
+ .muscle-drawer{top:60px}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}

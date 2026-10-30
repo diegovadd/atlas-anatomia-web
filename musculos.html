@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1.0">
+ <meta name="theme-color" content="#04080c">
+ <meta name="description" content="Atlas: laboratorio experimental de anatomía muscular 3D con importación local de modelos GLB segmentados.">
+ <title>ATLAS · Laboratorio muscular 3D</title>
+ <link rel="preconnect" href="https://fonts.googleapis.com">
+ <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+ <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600&display=swap" rel="stylesheet">
+ <link rel="stylesheet" href="./src/muscle-styles.css">
+ <script type="importmap">
+ {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
+ </script>
+ <script type="module" src="./src/muscle-viewer.js"></script>
+</head>
+<body>
+ <div class="muscle-app">
+  <header class="muscle-top">
+   <div class="muscle-brand"><a href="./index.html" aria-label="Volver a Atlas óseo">ATLAS<span>.</span></a><span class="divider">/</span><strong>Muscular</strong><small>LAB · ETAPA 02</small></div>
+   <a class="back-bone" href="./index.html">← Sistema óseo</a>
+  </header>
+  <main class="muscle-viewport" id="muscle-viewport" aria-label="Visor tridimensional del sistema muscular">
+   <canvas id="muscle-canvas" aria-label="Modelo muscular tridimensional"></canvas>
+   <nav class="muscle-rail" aria-label="Controles del sistema muscular">
+    <button type="button" id="muscle-bubble-import"><span class="m-icon">＋</span><span>Importar</span></button>
+    <button type="button" id="muscle-bubble-regions"><span class="m-icon">◈</span><span>Regiones</span></button>
+    <button type="button" id="muscle-bubble-search"><span class="m-icon">⌕</span><span>Buscar</span></button>
+    <span class="rail-separator" aria-hidden="true"></span>
+    <button type="button" id="muscle-bubble-isolate" disabled><span class="m-icon">◎</span><span>Aislar</span></button>
+    <button type="button" id="muscle-bubble-info"><span class="m-icon">ⓘ</span><span>Ficha</span></button>
+    <button type="button" id="muscle-bubble-reset"><span class="m-icon">↺</span><span>Reiniciar</span></button>
+   </nav>
+   <div class="muscle-onboarding" id="muscle-onboarding">
+    <span class="eyebrow">VISTA EXPERIMENTAL · ETAPA 02</span>
+    <h1>Sistema <em>muscular</em></h1>
+    <p>Importa un modelo GLB con músculos separados para explorarlos, aislarlos y consultar su identificación.</p>
+    <button type="button" id="muscle-import-cta">Importar modelo muscular <span aria-hidden="true">↗</span></button>
+    <small>No hay un modelo muscular incluido. Los datos OINA permanecen pendientes de validación.</small>
+   </div>
+   <div class="muscle-current" id="muscle-current" hidden>
+    <span>ESTRUCTURA MUSCULAR</span><strong id="muscle-active-name">Músculo seleccionado</strong>
+    <button type="button" id="muscle-open-info">Consultar ficha ↗</button>
+   </div>
+   <div class="viewer-actions">
+    <button type="button" id="muscle-isolate" disabled>Aislar músculo</button>
+    <button type="button" id="muscle-all">Mostrar todo</button>
+    <button type="button" id="muscle-reset">Restablecer vista</button>
+   </div>
+   <p id="muscle-status" class="muscle-status" role="status" aria-live="polite">Prototipo muscular: importa un GLB local segmentado para comenzar. Sin revisión anatómica final.</p>
+  </main>
+  <button type="button" class="muscle-dismiss" id="muscle-dismiss" aria-label="Cerrar menú abierto" hidden></button>
+  <aside class="muscle-drawer muscle-navigation" id="muscle-sidebar" aria-label="Regiones y búsqueda de músculos" hidden>
+   <div class="drawer-head"><div><span class="eyebrow">EXPLORAR</span><h2>Regiones y músculos</h2></div><button type="button" id="muscle-close-nav" aria-label="Cerrar menú">×</button></div>
+   <div class="drawer-body">
+    <label for="muscle-file">Modelo muscular GLB</label>
+    <input id="muscle-file" type="file" accept=".glb,model/gltf-binary">
+    <p class="note">Importación local, máximo 150 MB. Las mallas deben estar segmentadas y nombradas. El archivo no se sube a GitHub.</p>
+    <label for="muscle-regions">Región anatómica</label>
+    <select id="muscle-regions"></select>
+    <label for="muscle-search">Buscar músculo</label>
+    <input id="muscle-search" type="search" placeholder="Masetero, deltoides…" autocomplete="off">
+    <div class="list-title">Estructuras <span id="muscle-list-count">0 resultados</span></div>
+    <div id="muscle-list" aria-label="Músculos disponibles"></div>
+   </div>
+  </aside>
+  <aside class="muscle-drawer muscle-information" id="muscle-panel" aria-label="Ficha anatómica muscular" hidden>
+   <div class="drawer-head"><div><span class="eyebrow">FICHA · BORRADOR</span><h2>Anatomía muscular</h2></div><button type="button" id="muscle-close-info" aria-label="Cerrar ficha">×</button></div>
+   <div class="drawer-body">
+    <p id="muscle-placeholder">Selecciona un músculo en el modelo o en la lista para consultar su identificación y estado de revisión.</p>
+    <div id="muscle-ficha" hidden>
+     <h2 class="selected-muscle" id="muscle-name"></h2>
+     <p id="muscle-region"></p>
+     <section class="field"><strong>ORIGEN</strong><p id="muscle-origin"></p></section>
+     <section class="field"><strong>INSERCIÓN</strong><p id="muscle-insertion"></p></section>
+     <section class="field"><strong>INERVACIÓN</strong><p id="muscle-innervation"></p></section>
+     <section class="field"><strong>ACCIÓN</strong><p id="muscle-action"></p></section>
+    </div>
+    <section class="field"><strong>LÍMITE ACADÉMICO</strong><p>La posición de las mallas y las fichas OINA necesitan revisión con Moore 9.ª y Rouvière/Delmas 11.ª ed. Esta vista es preliminar.</p></section>
+   </div>
+  </aside>
+ </div>
+</body>
+</html>
