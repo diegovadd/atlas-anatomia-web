@@ -568,8 +568,16 @@ function closeDrawers(){
  $('atlas-backdrop').hidden=true;
 }
 function openDrawer(id,passive=false){
+ // En escritorio, conservar la lista abierta al seleccionar elementos en bloque.
+ // Así Ctrl/Cmd y Mayús siguen funcionando sin tener que reabrir el catálogo.
+ if(passive&&id==='drawer-info'&&!$('drawer-catalogue').hidden&&window.innerWidth>850){
+  $('drawer-info').hidden=false;
+  $('drawer-info').classList.add('auto-info');
+  $('atlas-backdrop').hidden=true;
+  return;
+ }
  closeDrawers();$(id).hidden=false;
- // Ficha automática sin cortina: Ctrl/Cmd+clic sigue permitiendo ampliar selección
+ // Ficha automática sin cortina: también permite seguir seleccionando en el canvas.
  $('atlas-backdrop').hidden=passive||id==='drawer-info';
  $('drawer-info').classList.toggle('auto-info',id==='drawer-info');
  if(id==='drawer-systems')renderSystemMenu();
