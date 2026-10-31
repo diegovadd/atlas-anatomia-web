@@ -86,9 +86,20 @@ const muscleEntries=ECORCHE_LABELS.map((x,i)=>{
  return asEntry('muscle','ecorche-'+i,info?.displayName||x.name,
   x.name,normalizedRegion('muscle',info?.region),info?.kind||'muscle',x.name,info?.layer||null);
 });
+/** Región principal de referencia para cada tramo de columna y neuroeje.
+ * No implica que médula, discos o vasos estén limitados a una sola región.
+ */
+export function nerveRegionFor(id,group){
+ if(id==='medulla-oblongata')return 'head';
+ if(id==='cauda-equina'||id==='sacrum')return 'pelvis';
+ if(id==='spinal-cord')return 'back';
+ if(/^nerve-c\d+$/.test(id)||/^vertebra-c\d+$/.test(id)||/^disc-c\d+-/.test(id))return 'neck';
+ if(/^nerve-t\d+$/.test(id)||/^vertebra-t\d+$/.test(id)||/^disc-t\d+-/.test(id))return 'chest';
+ if(/^vertebra-l\d+$/.test(id)||/^disc-l\d+-/.test(id))return 'back';
+ return normalizedRegion('nerve',group);
+}
 const nerveEntries=NERVE_REGISTRY.map(x=>asEntry('nerve',x.id,x.name,x.sourceName,
- x.id==='medulla-oblongata'?'head':/^nerve-c\d+$/.test(x.id)?'neck':
- /^nerve-t\d+$/.test(x.id)?'chest':normalizedRegion('nerve',x.group),x.group,x.id));
+ nerveRegionFor(x.id,x.group),x.group,x.id));
 const vesselEntries=VASCULAR_STRUCTURES.map(x=>asEntry('vessel',x.id,x.name,x.originalName,
  normalizedRegion('vessel',x.region),x.kind,x.id));
 const jointEntries=JOINTS_STRUCTURES.map(x=>asEntry('joint',x.id,x.name,x.originalName,
