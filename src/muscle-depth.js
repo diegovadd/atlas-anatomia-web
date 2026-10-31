@@ -2,10 +2,15 @@
  * Navegación por planos musculares: estado reversible e independiente de Three.js.
  * Nunca modifica geometría ni la clasificación médica; solo visibilidad local.
  */
-export function muscleVisible(entry,{region='all',layerMode='all',isolate=false,selectedId=null,hiddenIds=new Set()}={}){
+export function muscleVisible(entry,{
+ region='all',layerMode='all',sideMode='all',kindMode='all',
+ isolate=false,selectedId=null,hiddenIds=new Set()
+}={}){
  return !hiddenIds.has(entry.id)&&
   (region==='all'||entry.region===region)&&
   (layerMode==='all'||entry.layer===layerMode)&&
+  (sideMode==='all'||(sideMode==='midline'?!entry.side||entry.side==='midline':entry.side===sideMode))&&
+  (kindMode==='all'||(entry.kind||'muscle')===kindMode)&&
   (!isolate||selectedId===null||entry.id===selectedId);
 }
 export function hideMuscle(hiddenIds,history,id){

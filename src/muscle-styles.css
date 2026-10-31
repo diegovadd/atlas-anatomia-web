@@ -244,3 +244,54 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
  .muscle-current .muscle-current-actions button{font-size:10px;padding:7px}
  .muscle-app #muscle-restore-all{font-size:10px}
 }
+
+
+/* Catálogo bilingüe: revisión explícita, lateralidad y separación por tejido. */
+.muscle-catalogue-note{
+ display:grid;gap:7px;padding:13px 14px;
+ border:1px solid #426a60;background:linear-gradient(135deg,#172d2d,#112530);
+ border-radius:11px;
+}
+.muscle-catalogue-note strong{
+ color:#e2f1ea;font:500 19px 'IBM Plex Serif',Georgia,serif;
+}
+.muscle-catalogue-note p,.muscle-catalogue-note small{
+ margin:0;font-size:12px;line-height:1.6;color:#b0c9c2;
+}
+.muscle-catalogue-note small{color:#9cd1bf;font-size:11px}
+.muscle-list-navigation{display:flex;gap:7px}
+.muscle-list-navigation button{
+ flex:1;padding:10px 9px;border:1px solid #4f786f;border-radius:9px;
+ color:#e8f2ec;background:#1c3935;font-size:12px;
+}
+.muscle-list-navigation button:hover:not(:disabled){background:#2e554b}
+.muscle-option.connective-entry{
+ border-left:3px solid #c6ab72;color:#e2d7c2;
+}
+.muscle-option.source-warning{
+ border-color:#b28b54;
+}
+.structure-kind{
+ display:inline-flex;align-self:flex-start;width:fit-content;
+ margin:1px 0;padding:4px 9px;
+ border:1px solid #556d71;background:#152d31;border-radius:6px;
+ font-size:11px;font-weight:600;color:#cae6da;
+}
+.muscle-nomenclature-note{
+ color:#a9c7bf;font-size:12px;line-height:1.6;
+ padding:10px 11px;margin:0;border-left:3px solid #75978b;background:#10252a;
+}
+.muscle-data-warning{
+ padding:11px 12px;margin:3px 0;
+ border:1px solid #a88758;background:#31271d;
+ color:#f7d8aa;font-size:12px;line-height:1.6;border-radius:8px;
+}
+.muscle-information .drawer-body .muscle-data-warning{color:#f7d8aa}
+.muscle-information .drawer-body .muscle-nomenclature-note{color:#a9c7bf}
+.muscle-app #muscle-side,.muscle-app #muscle-kind{
+ border-color:#436a66;background:#162d30;
+}
+@media(max-width:750px){
+ .muscle-list-navigation button{min-height:40px}
+ .muscle-catalogue-note{padding:12px}
+}

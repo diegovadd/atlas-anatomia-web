@@ -10,7 +10,7 @@ import {muscleVisible,hideMuscle,restoreLastMuscle,restoreMuscle,restoreAllMuscl
 
 const $=id=>document.getElementById(id);
 const state={model:null,guide:null,bones:[],bonesVisible:false,guideVisible:true,demo:false,
- modelKind:'demo',loading:false,layerMode:'all',entries:[],selected:null,region:'all',
+ modelKind:'demo',loading:false,layerMode:'all',sideMode:'all',kindMode:'all',entries:[],selected:null,region:'all',
  query:'',isolate:false,loaded:false,ghostMode:false,
  hiddenIds:new Set(),hiddenHistory:[],lastPointer:null,meshToEntry:new Map()};
 const renderer=new THREE.WebGLRenderer({canvas:$('muscle-canvas'),antialias:true,alpha:true});
@@ -46,13 +46,29 @@ function infoFor(entry){
  const info=muscleDraft(entry);
  $('muscle-name').textContent=info.name;
  $('muscle-region').textContent=regionFor(entry);
+ const connective=entry.kind==='connective';
+ $('muscle-selected-kind').textContent=connective?'TEJIDO CONECTIVO':'ESTRUCTURA MUSCULAR';
+ $('muscle-info-kind').textContent=connective?'Tejido conectivo · no es un músculo':'Músculo';
+ $('muscle-nomenclature-note').textContent=entry.translated
+  ? 'Denominación española preliminar. Pendiente de cotejo terminológico y de geometría.'
+  : 'Se conserva el nombre inglés original: traducción aún no verificada.';
+ $('muscle-info-source').textContent=entry.source||'No especificada';
+ $('muscle-info-side').textContent=entry.side==='left'?'Izquierdo':
+  entry.side==='right'?'Derecho':entry.side==='midline'?'Línea media':'No especificada';
+ $('muscle-side-warning').hidden=!entry.sideConflict;
+ $('muscle-side-warning').textContent=entry.sideConflict
+  ? 'Advertencia de origen: la malla se llama «'+entry.originalName+'», pero sus metadatos indican el lado '+(entry.reportedSide==='left'?'izquierdo':'derecho')+'. Verificar antes de usar como referencia anatómica.'
+  : '';
+ $('muscle-oinastatus').textContent=connective
+  ? 'Esta pieza es un tendón, fascia o retináculo; no corresponde utilizar una ficha OINA muscular.'
+  : 'Origen, inserción, inervación y acción todavía no están verificados bibliográficamente.';
  $('muscle-info-layer').textContent=entry.layer==='deep'?'Músculo profundo':'Músculo superficial';
  $('muscle-info-original').textContent=entry.originalName||entry.raw||'—';
  $('muscle-info-fma').textContent=entry.fma||'No disponible';
- $('muscle-origin').textContent=info.origin;
- $('muscle-insertion').textContent=info.insertion;
- $('muscle-innervation').textContent=info.innervation;
- $('muscle-action').textContent=info.action;
+ $('muscle-origin').textContent=connective?'No aplica ficha OINA muscular':info.origin;
+ $('muscle-insertion').textContent=connective?'Pendiente de ficha específica de tejido conectivo':info.insertion;
+ $('muscle-innervation').textContent=connective?'No aplica ficha OINA muscular':info.innervation;
+ $('muscle-action').textContent=connective?'No aplica ficha OINA muscular':info.action;
  $('muscle-placeholder').hidden=true;
  $('muscle-ficha').hidden=false;
  $('muscle-current').hidden=false;
@@ -68,7 +84,9 @@ function selectedFilter(entry){
  const norm=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
  return (state.region==='all'||entry.region===state.region) &&
   layerMatches(entry,state.layerMode) &&
-  (!state.query||norm(entry.displayName+' '+(entry.originalName||'')).includes(norm(state.query)));
+  (state.sideMode==='all'||(state.sideMode==='midline'?!entry.side||entry.side==='midline':entry.side===state.sideMode)) &&
+  (state.kindMode==='all'||entry.kind===state.kindMode) &&
+  (!state.query||norm(entry.displayName+' '+(entry.originalName||'')+' '+(entry.key||'')).includes(norm(state.query)));
 }
 function refreshVisibility(){
  const selectedId=state.selected?.id??null;
@@ -79,7 +97,7 @@ function refreshVisibility(){
  for(const entry of state.entries){
   const m=entry.mesh.material;
   entry.mesh.visible=muscleVisible(entry,{
-   region:state.region,layerMode:state.layerMode,isolate:state.isolate,
+   region:state.region,layerMode:state.layerMode,sideMode:state.sideMode,kindMode:state.kindMode,isolate:state.isolate,
    selectedId,hiddenIds:state.hiddenIds
   });
   if(entry===state.selected){
@@ -121,6 +139,8 @@ function renderList(){
  const container=$('muscle-list');container.replaceChildren();
  const list=state.entries.filter(selectedFilter).sort((a,b)=>a.displayName.localeCompare(b.displayName,'es'));
  $('muscle-list-count').textContent=list.length+' resultados';
+ $('muscle-prev').disabled=list.length<1;
+ $('muscle-next').disabled=list.length<1;
  if(!list.length){
   const p=document.createElement('p');p.className='muscle-empty';
   p.textContent=state.loaded?'No hay músculos reconocidos con este filtro.':'Importa un GLB segmentado para explorar los músculos.';
@@ -132,6 +152,8 @@ function renderList(){
   button.setAttribute('aria-pressed',String(entry===state.selected));
   button.textContent=entry.displayName+(state.hiddenIds.has(entry.id)?' · retirado':'');
   if(state.hiddenIds.has(entry.id))button.classList.add('temporarily-hidden');
+  if(entry.kind==='connective')button.classList.add('connective-entry');
+  if(entry.sideConflict){button.classList.add('source-warning');button.title='Revisar discrepancia de lateralidad en la ficha';}
   if(state.modelKind==='detailed'&&!entry.translated)button.title='Nombre original en inglés; traducción por revisar';
   button.addEventListener('click',()=>{
    if(restoreMuscle(state.hiddenIds,state.hiddenHistory,entry.id))refreshVisibility();
@@ -140,6 +162,17 @@ function renderList(){
   });
   container.appendChild(button);
  }
+}
+function browseMuscles(direction){
+ const list=state.entries.filter(selectedFilter).sort((a,b)=>a.displayName.localeCompare(b.displayName,'es'));
+ if(!list.length)return;
+ const idx=list.indexOf(state.selected);
+ const next=idx<0?(direction<0?list.length-1:0):(idx+direction+list.length)%list.length;
+ const target=list[next];
+ if(restoreMuscle(state.hiddenIds,state.hiddenHistory,target.id))refreshVisibility();
+ state.lastPointer=null;
+ selectMuscle(target,true);
+ $('muscle-status').textContent=`Explorando ${next+1}/${list.length}: ${target.displayName}`;
 }
 function focusOnMeshes(meshes){
  const box=new THREE.Box3();
@@ -193,7 +226,7 @@ function changeRegion(id){
  state.region=id;state.selected=null;state.isolate=false;clearInfo();
  refreshVisibility();renderList();
  const shown=state.entries.filter(e=>muscleVisible(e,{
-  region:state.region,layerMode:state.layerMode,hiddenIds:state.hiddenIds
+  region:state.region,layerMode:state.layerMode,sideMode:state.sideMode,kindMode:state.kindMode,hiddenIds:state.hiddenIds
  }));
  if(shown.length)focusOnMeshes(shown.map(e=>e.mesh));
 }
@@ -222,6 +255,7 @@ function acceptModel(model,audit,{demo=false,guide=null,kind='import'}={}){
  }
  if(state.guide)root.remove(state.guide);
  state.guide=guide;state.guideVisible=true;state.demo=demo;
+ state.sideMode='all';state.kindMode='all';
  state.hiddenIds.clear();state.hiddenHistory.length=0;
  state.lastPointer=null;state.ghostMode=false;state.meshToEntry.clear();
  state.modelKind=demo?'demo':kind;
@@ -257,7 +291,7 @@ function acceptModel(model,audit,{demo=false,guide=null,kind='import'}={}){
  $('muscle-source-credit').hidden=kind!=='detailed';
  $('muscle-guide-toggle').setAttribute('aria-pressed','true');
  $('muscle-guide-toggle').textContent='Ocultar silueta';
- $('muscle-layer').value='all';
+ $('muscle-layer').value='all';$('muscle-side').value='all';$('muscle-kind').value='all';
  $('muscle-search').value='';$('muscle-regions').value='all';
  if(kind==='detailed'){
   $('muscle-banner-label').textContent='FUENTE ABIERTA · CC BY-SA 4.0';
@@ -279,10 +313,14 @@ function acceptModel(model,audit,{demo=false,guide=null,kind='import'}={}){
  const box=new THREE.Box3().setFromObject(model),center=box.getCenter(new THREE.Vector3()),min=box.min.clone();
  root.position.set(-center.x,-min.y,-center.z);root.updateMatrixWorld(true);
  refreshVisibility();renderList();clearInfo();
+ const actualMuscles=state.entries.filter(e=>e.kind!=='connective').length;
+ const connective=state.entries.length-actualMuscles;
+ const issues=state.entries.filter(e=>e.sideConflict).length;
+ $('muscle-catalogue-stat').textContent=`${actualMuscles} mallas musculares · ${connective} tejidos conectivos · ${issues} alertas de lateralidad`;
  focusOnMeshes(state.entries.map(e=>e.mesh));
  $('muscle-status').textContent=demo
   ? `EJEMPLO ESQUEMÁTICO · ${audit.recognizedTypes} tipos y ${state.entries.length} volúmenes. Carga el detallado para explorar superficies musculares reales.`
-  : `${kind==='detailed'?'ÉCORCHÉ · CC BY-SA 4.0':'GLB IMPORTADO'} · ${state.entries.length} mallas musculares, ${new Set(state.entries.map(e=>e.key)).size} tipos, ${state.bones.length} mallas de referencia ósea. Estudio anatómico aún en revisión.`;
+  : `${kind==='detailed'?'ÉCORCHÉ · CC BY-SA 4.0':'GLB IMPORTADO'} · ${actualMuscles} músculos, ${connective} piezas conectivas, ${issues} alertas de lateralidad y ${state.bones.length} mallas óseas. Validación anatómica pendiente.`;
 }
 function showBuiltInDemo(){
  const {muscles,guide}=createMuscleDemo(THREE);
@@ -338,10 +376,28 @@ $('muscle-regions').addEventListener('change',event=>changeRegion(event.target.v
 $('muscle-layer').addEventListener('change',event=>{
  state.layerMode=event.target.value;state.selected=null;state.isolate=false;
  clearInfo();refreshVisibility();renderList();
- const subset=state.entries.filter(e=>(state.region==='all'||e.region===state.region)&&layerMatches(e,state.layerMode));
+ const subset=state.entries.filter(e=>muscleVisible(e,{region:state.region,layerMode:state.layerMode,sideMode:state.sideMode,kindMode:state.kindMode,hiddenIds:state.hiddenIds}));
  if(subset.length)focusOnMeshes(subset.map(e=>e.mesh));
 });
 $('muscle-search').addEventListener('input',event=>{state.query=event.target.value.trim().toLowerCase();renderList()});
+function updateCatalogueFilters(){
+ state.selected=null;state.isolate=false;state.lastPointer=null;
+ clearInfo();refreshVisibility();renderList();
+ const visible=state.entries.filter(e=>muscleVisible(e,{
+  region:state.region,layerMode:state.layerMode,
+  sideMode:state.sideMode,kindMode:state.kindMode,
+  hiddenIds:state.hiddenIds
+ }));
+ if(visible.length)focusOnMeshes(visible.map(e=>e.mesh));
+}
+$('muscle-side').addEventListener('change',event=>{
+ state.sideMode=event.target.value;updateCatalogueFilters();
+});
+$('muscle-kind').addEventListener('change',event=>{
+ state.kindMode=event.target.value;updateCatalogueFilters();
+});
+$('muscle-prev').addEventListener('click',()=>browseMuscles(-1));
+$('muscle-next').addEventListener('click',()=>browseMuscles(1));
 $('muscle-isolate').addEventListener('click',()=>{
  if(!state.selected)return;
  state.isolate=!state.isolate;refreshVisibility();
@@ -349,9 +405,9 @@ $('muscle-isolate').addEventListener('click',()=>{
 });
 $('muscle-all').addEventListener('click',()=>{restoreAllPeels();changeRegion('all')});
 $('muscle-reset').addEventListener('click',()=>{
- state.selected=null;state.isolate=false;state.query='';state.region='all';state.layerMode='all';
+ state.selected=null;state.isolate=false;state.query='';state.region='all';state.layerMode='all';state.sideMode='all';state.kindMode='all';
  state.ghostMode=false;state.lastPointer=null;restoreAllMuscles(state.hiddenIds,state.hiddenHistory);
- $('muscle-search').value='';$('muscle-regions').value='all';$('muscle-layer').value='all';
+ $('muscle-search').value='';$('muscle-regions').value='all';$('muscle-layer').value='all';$('muscle-side').value='all';$('muscle-kind').value='all';
  refreshVisibility();renderList();clearInfo();
  if(state.entries.length)focusOnMeshes(state.entries.map(e=>e.mesh));
 });

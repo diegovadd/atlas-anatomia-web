@@ -58,7 +58,7 @@
     · modelo adaptado visualmente (colores y visibilidad)
    </div>
    <div class="muscle-current" id="muscle-current" hidden>
-    <span>ESTRUCTURA MUSCULAR</span><strong id="muscle-active-name">Músculo seleccionado</strong>
+    <span id="muscle-selected-kind">ESTRUCTURA MUSCULAR</span><strong id="muscle-active-name">Músculo seleccionado</strong>
     <div class="muscle-current-actions">
      <button type="button" id="muscle-hide-selected">Retirar y explorar detrás</button>
      <button type="button" id="muscle-xray" aria-pressed="false">Transparencia</button>
@@ -103,14 +103,36 @@
      <option value="superficial">Músculos superficiales</option>
      <option value="deep">Músculos profundos</option>
     </select>
+    <div class="muscle-catalogue-note">
+     <strong>Catálogo anatómico bilingüe</strong>
+     <p>Atlas identifica los 362 registros de las capas musculares de Écorché en español. Distingue músculos de tendones y fascias, y señala datos de lateralidad que requieren revisión.</p>
+     <small id="muscle-catalogue-stat" aria-live="polite">Carga el modelo detallado para consultar su inventario.</small>
+    </div>
     <label for="muscle-file">Importar otro modelo GLB local</label>
     <input id="muscle-file" type="file" accept=".glb,model/gltf-binary">
     <p class="note">Si tienes un GLB anatómico segmentado (máximo 150 MB), sustituye el ejemplo. Se procesa únicamente en tu navegador; revisa licencia, mallas y orientación.</p>
     <label for="muscle-regions">Región anatómica</label>
     <select id="muscle-regions"></select>
-    <label for="muscle-search">Buscar músculo</label>
+    <label for="muscle-side">Lateralidad</label>
+    <select id="muscle-side">
+     <option value="all">Ambos lados y línea media</option>
+     <option value="left">Izquierdo</option>
+     <option value="right">Derecho</option>
+     <option value="midline">Línea media o no especificado</option>
+    </select>
+    <label for="muscle-kind">Tipo de estructura</label>
+    <select id="muscle-kind">
+     <option value="all">Músculos y tejidos conectivos</option>
+     <option value="muscle">Solo músculos</option>
+     <option value="connective">Tendones, fascias y retináculos</option>
+    </select>
+    <label for="muscle-search">Buscar músculo por nombre o idioma</label>
     <input id="muscle-search" type="search" placeholder="Masetero, deltoides…" autocomplete="off">
     <div class="list-title">Estructuras <span id="muscle-list-count">0 resultados</span></div>
+    <div class="muscle-list-navigation" aria-label="Recorrer estructuras filtradas">
+     <button type="button" id="muscle-prev" disabled>← Anterior</button>
+     <button type="button" id="muscle-next" disabled>Siguiente →</button>
+    </div>
     <div id="muscle-list" aria-label="Músculos disponibles"></div>
     <p class="note">Los músculos retirados siguen apareciendo en la lista y se pueden recuperar seleccionándolos.</p>
    </div>
@@ -122,7 +144,11 @@
     <div id="muscle-ficha" hidden>
      <h2 class="selected-muscle" id="muscle-name"></h2>
      <p id="muscle-region"></p>
-     <div class="muscle-metadata"><div><b>Capa</b><span id="muscle-info-layer">Sin clasificar</span></div><div><b>Nombre en fuente</b><span id="muscle-info-original">—</span></div><div><b>Identificador FMA</b><span id="muscle-info-fma">No disponible</span></div></div>
+     <p id="muscle-info-kind" class="structure-kind">Músculo</p>
+     <p id="muscle-nomenclature-note" class="muscle-nomenclature-note">Nombre español: etiqueta de estudio, pendiente de revisión editorial.</p>
+     <p id="muscle-side-warning" class="muscle-data-warning" hidden role="note"></p>
+     <div class="muscle-metadata"><div><b>Capa</b><span id="muscle-info-layer">Sin clasificar</span></div><div><b>Nombre en fuente</b><span id="muscle-info-original">—</span></div><div><b>Identificador FMA</b><span id="muscle-info-fma">No disponible</span></div><div><b>Procedencia</b><span id="muscle-info-source">No especificada</span></div><div><b>Lateralidad</b><span id="muscle-info-side">No especificada</span></div></div>
+     <section class="field"><strong>DATOS ANATÓMICOS</strong><p id="muscle-oinastatus">La identificación de la malla no equivale a validación OINA.</p></section>
      <section class="field"><strong>ORIGEN</strong><p id="muscle-origin"></p></section>
      <section class="field"><strong>INSERCIÓN</strong><p id="muscle-insertion"></p></section>
      <section class="field"><strong>INERVACIÓN</strong><p id="muscle-innervation"></p></section>
