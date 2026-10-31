@@ -86,7 +86,7 @@
   <div class="drawer-content">
    <p class="drawer-intro">Cada sistema se abre en el mismo espacio 3D. Las mallas se mantienen separadas hasta realizar su calibración anatómica.</p>
    <div class="system-list" id="system-list"></div>
-   <section class="notice"><strong>Superposición bloqueada</strong><p>La escala, el origen y los ejes de las cinco fuentes todavía no se han calibrado. Para comparar puntos, utiliza la herramienta «Puntos» y exporta sus coordenadas locales.</p><button type="button" id="why-alignment">Ver requisitos de alineación</button></section>
+   <section class="notice"><strong>Superposición bloqueada</strong><p>La escala, el origen y los ejes de las seis fuentes todavía no se han calibrado. Para comparar puntos, utiliza la herramienta «Puntos» y exporta sus coordenadas locales.</p><button type="button" id="why-alignment">Ver requisitos de alineación</button></section>
    <a href="./index.html" class="special-link">Abrir cráneo y huesos individualizados ↗</a>
   </div>
  </aside>
@@ -162,7 +162,7 @@
  </aside>
  <dialog id="alignment-dialog" aria-labelledby="alignment-heading">
   <h2 id="alignment-heading">Registro anatómico antes de unir modelos</h2>
-  <p>Los cinco modelos provienen de fuentes diferentes. Un punto con el mismo nombre puede tener valores numéricos distintos porque cambian escala, ejes, origen y simplificación geométrica.</p>
+  <p>Los seis modelos provienen de fuentes diferentes. Un punto con el mismo nombre puede tener valores numéricos distintos porque cambian escala, ejes, origen y simplificación geométrica.</p>
   <p>Para superponerlos correctamente habrá que definir al menos tres puntos no colineales por cada pareja de modelos, verificar lateralidad y escala, calcular una transformación y auditar sus errores sobre otros puntos. <strong>No hemos validado aún ninguna pareja.</strong></p>
   <form method="dialog"><button type="submit">Entendido</button></form>
  </dialog>
