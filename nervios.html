@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="es">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1">
+ <meta name="theme-color" content="#04090e">
+ <meta name="description" content="Atlas 3D: laboratorio neuroanatómico de médula, nervios cervicales, plexo braquial izquierdo y columna con estructuras individuales.">
+ <title>ATLAS · Sistema nervioso · Laboratorio 03</title>
+ <link rel="preconnect" href="https://fonts.googleapis.com">
+ <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600&display=swap" rel="stylesheet">
+ <link rel="stylesheet" href="./src/nerve-styles.css">
+ <script type="importmap">
+ {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
+ </script>
+ <script type="module" src="./src/nerve-viewer.js"></script>
+</head>
+<body>
+<div class="neuro-app">
+ <header class="neuro-top">
+  <div class="neuro-brand"><a href="./preview.html" aria-label="Ir a la portada de Atlas">ATLAS<span>.</span></a><span>/</span><strong>Nervioso</strong><small>LAB · ETAPA 03</small></div>
+  <nav aria-label="Navegación por sistemas">
+   <a href="./index.html">Óseo</a>
+   <a href="./musculos.html">Muscular</a>
+   <a href="./preview.html">Sistemas</a>
+  </nav>
+ </header>
+ <main id="neuro-viewport" class="neuro-viewport" aria-label="Visor tridimensional del neuroeje y referencias vertebrales">
+  <canvas id="neuro-canvas" aria-label="Modelo anatómico tridimensional, seleccionable con el ratón"></canvas>
+  <nav class="neuro-rail" aria-label="Controles de exploración">
+   <button type="button" id="neuro-open-list" aria-label="Abrir árbol anatómico"><span aria-hidden="true">☷</span>Regiones</button>
+   <button type="button" id="neuro-open-search" aria-label="Buscar estructuras"><span aria-hidden="true">⌕</span>Buscar</button>
+   <button type="button" id="neuro-open-info" aria-label="Ver ficha anatómica"><span aria-hidden="true">ⓘ</span>Ficha</button>
+   <button type="button" id="neuro-rail-isolate" disabled><span aria-hidden="true">◎</span>Aislar</button>
+   <button type="button" id="neuro-reset-rail"><span aria-hidden="true">↺</span>Reiniciar</button>
+  </nav>
+  <section class="neuro-intro" id="neuro-intro">
+   <span class="eyebrow">ETAPA 03 · PROTOTIPO CON MALLAS ABIERTAS</span>
+   <h1>Explora el <em>neuroeje</em> en tres dimensiones</h1>
+   <p>Visualiza estructuras reales de la médula espinal, nervios cervicales y plexo braquial izquierdo. Usa el árbol para identificar piezas posteriores al hueso.</p>
+   <button type="button" id="neuro-intro-list">Explorar las estructuras</button>
+   <small>Modelo parcial de BodyParts3D 4.3, adaptado por OrganUI. No muestra todo el sistema nervioso.</small>
+  </section>
+  <div class="neuro-status" id="neuro-status" aria-live="polite" role="status">Iniciando visor neuroanatómico…</div>
+  <section class="neuro-source" aria-label="Licencia y origen de las mallas">
+   <span>Modelo: <a href="https://github.com/organui/spinal-cord-3d" target="_blank" rel="noopener noreferrer">OrganUI / BodyParts3D © DBCLS</a></span>
+   <a href="https://creativecommons.org/licenses/by-sa/2.1/jp/deed.en" target="_blank" rel="noopener noreferrer">CC BY-SA 2.1 JP</a>
+  </section>
+  <section class="neuro-selected" id="neuro-selected" hidden>
+   <span class="eyebrow" id="neuro-selected-group">ESTRUCTURA</span>
+   <strong id="neuro-selected-name">Selecciona una estructura</strong>
+   <div class="neuro-selection-actions">
+    <button type="button" id="neuro-focus">Centrar</button>
+    <button type="button" id="neuro-isolate">Aislar</button>
+    <button type="button" id="neuro-hide">Ocultar</button>
+    <button type="button" id="neuro-selected-info">Ficha ↗</button>
+   </div>
+  </section>
+  <div class="neuro-toolbar" aria-label="Vistas y capas">
+   <button type="button" id="neuro-view-front">Anterior</button>
+   <button type="button" id="neuro-view-left">Lateral izq.</button>
+   <button type="button" id="neuro-view-back">Posterior</button>
+   <span class="neuro-toolbar-sep" aria-hidden="true"></span>
+   <button type="button" id="neuro-context-toggle" aria-pressed="true">Ocultar huesos/discos</button>
+   <button type="button" id="neuro-show-all">Restablecer capas</button>
+  </div>
+  <div class="neuro-loading" id="neuro-loading">
+   <div class="neuro-loading-spinner" aria-hidden="true"></div>
+   <strong>Preparando mallas tridimensionales</strong>
+   <p id="neuro-loading-text">Descargando 5,1 MB desde una fuente abierta…</p>
+   <button type="button" id="neuro-retry" hidden>Reintentar carga</button>
+  </div>
+ </main>
+ <button type="button" class="neuro-dismiss" id="neuro-dismiss" aria-label="Cerrar panel" hidden></button>
+ <aside class="neuro-drawer neuro-list-drawer" id="neuro-list-drawer" hidden aria-label="Árbol de estructuras neuroanatómicas">
+  <div class="neuro-drawer-head"><div><span class="eyebrow">EXPLORACIÓN POR ESTRUCTURA</span><h2>Neuroanatomía</h2></div><button type="button" id="neuro-close-list" aria-label="Cerrar lista">×</button></div>
+  <div class="neuro-drawer-body">
+   <div class="neuro-panel-highlight"><strong>Modelo abierto, alcance parcial</strong><p>Nervios espinales izquierdos C1–T2 y plexo braquial izquierdo. No incluye pares craneales, nervios del lado derecho ni todos los nervios periféricos.</p></div>
+   <label for="neuro-group">Grupo anatómico</label>
+   <select id="neuro-group"></select>
+   <label for="neuro-query">Buscar por nombre o FMA</label>
+   <input type="search" id="neuro-query" placeholder="Plexo braquial, C5, FMA..." autocomplete="off">
+   <div class="neuro-list-meta"><strong>Estructuras</strong><span id="neuro-count">63 disponibles</span></div>
+   <div id="neuro-list" class="neuro-list" role="list" aria-label="Estructuras seleccionables"></div>
+   <p class="neuro-footnote">Los huesos y discos son contexto del mismo modelo. No se superponen con el visor óseo o muscular hasta comprobar sus coordenadas.</p>
+  </div>
+ </aside>
+ <aside class="neuro-drawer neuro-info-drawer" id="neuro-info-drawer" hidden aria-label="Ficha de estructura neuroanatómica">
+  <div class="neuro-drawer-head"><div><span class="eyebrow">FICHA · PRELIMINAR</span><h2>Detalles anatómicos</h2></div><button type="button" id="neuro-close-info" aria-label="Cerrar ficha">×</button></div>
+  <div class="neuro-drawer-body">
+   <p id="neuro-info-empty">Selecciona una estructura del modelo o del árbol anatómico.</p>
+   <div id="neuro-info-content" hidden>
+    <h3 id="neuro-info-title"></h3>
+    <p id="neuro-info-subtitle"></p>
+    <dl class="neuro-data-grid">
+     <div><dt>Grupo</dt><dd id="neuro-info-group"></dd></div>
+     <div><dt>Nombre de origen</dt><dd id="neuro-info-source"></dd></div>
+     <div><dt>Identificador FMA</dt><dd id="neuro-info-fma"></dd></div>
+     <div><dt>Lateralidad</dt><dd id="neuro-info-side"></dd></div>
+    </dl>
+    <section class="neuro-field"><h4>Relaciones disponibles</h4><div id="neuro-relations"></div></section>
+    <section class="neuro-field"><h4>Trayecto e inervación</h4><p>Información detallada pendiente de cotejo bibliográfico con Moore y Rouvière. El GLB representa superficies, no toda la continuidad ni las funciones de los nervios.</p></section>
+    <button type="button" id="neuro-info-isolate">Aislar esta estructura</button>
+   </div>
+   <section class="neuro-field neuro-limit">
+    <h4>Limitaciones del modelo</h4>
+    <ul id="neuro-limits"></ul>
+    <p>Modelo BodyParts3D / Anatomography 4.3 © DBCLS, adaptado por OrganUI, CC BY-SA 2.1 Japan. Las mallas no han pasado todavía una auditoría académica propia de Atlas.</p>
+   </section>
+  </div>
+ </aside>
+</div>
+</body>
+</html>

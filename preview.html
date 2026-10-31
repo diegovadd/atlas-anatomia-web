@@ -15,7 +15,7 @@
  main{padding:70px 0 60px}.eyebrow{font-size:11px;letter-spacing:.14em;color:#a8d6ca}
  h1{font:500 clamp(36px,6vw,66px)/1.08 'IBM Plex Serif',Georgia,serif;max-width:760px;margin:15px 0 21px;letter-spacing:-.04em}
  .desc{max-width:690px;line-height:1.75;color:#b7c9ce;font-size:16px}
- .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:19px;margin-top:45px}
+ .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:17px;margin-top:45px}
  .card{display:flex;flex-direction:column;gap:12px;min-height:250px;padding:27px;border:1px solid #38565a;border-radius:18px;background:#111e26de;text-decoration:none;color:inherit;transition:transform .15s,background .15s}
  .card:hover{transform:translateY(-3px);background:#1b3035}
  .card small{color:#a5d2c6;font-size:11px;letter-spacing:.1em}
@@ -24,6 +24,8 @@
  .card span{color:#d5f0e8;font-size:13px}
  .card.muscle{border-color:#62524e}
  .card.muscle small,.card.muscle span{color:#e6c4ae}
+ .card.neuro{border-color:#526958}.card.neuro small,.card.neuro span{color:#b8dda4}
+ @media(max-width:940px) and (min-width:651px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
  .notice{margin-top:35px;padding:18px 20px;border-left:2px solid #8eafa5;background:#0a151d;color:#abbec2;font-size:13px;line-height:1.65}
  a:focus-visible{outline:2px solid #a3e6d6;outline-offset:3px}
  @media(max-width:650px){main{padding:45px 0}.cards{grid-template-columns:1fr}.hint{font-size:9px}.card{min-height:220px}}
@@ -37,8 +39,9 @@
   <p class="desc">Prueba la nueva interfaz oscura, las herramientas en burbujas y las fichas desplegables. Este laboratorio funciona en el navegador y también puedes ejecutarlo localmente.</p>
   <div class="cards">
    <a class="card" href="./index.html"><small>01 / EXPLORACIÓN</small><strong>Sistema óseo</strong><p>Visor interactivo en vista inmersiva, búsqueda, aislamiento, doble selección y flechas para accidentes del cráneo.</p><span>Abrir visor óseo ↗</span></a>
-   <a class="card muscle" href="./musculos.html"><small>02 / PROTOTIPO</small><strong>Sistema muscular</strong><p>Explora músculos por región y profundidad. Carga el modelo Écorché de fuente abierta para ver mallas detalladas, seleccionar estructuras y visualizar huesos de referencia.</p><span>Abrir laboratorio muscular ↗</span></a>
+   <a class="card muscle" href="./musculos.html"><small>02 / LABORATORIO</small><strong>Sistema muscular</strong><p>Catálogo bilingüe, mallas detalladas Écorché, exploración por capas y acceso reversible a músculos profundos.</p><span>Abrir laboratorio muscular ↗</span></a>
+   <a class="card neuro" href="./nervios.html"><small>03 / NUEVO PROTOTIPO</small><strong>Sistema nervioso</strong><p>Médula, nervios espinales izquierdos C1–T2, plexo braquial, cauda equina y columna con 63 estructuras reales seleccionables.</p><span>Explorar neuroanatomía ↗</span></a>
   </div>
-  <div class="notice"><strong>Estado del proyecto:</strong> el nuevo diseño está en revisión. No se considera concluida la validación anatómica. La vista muscular incluye un ejemplo esquemático y un modelo detallado externo opcional (Écorché, CC BY-SA 4.0). Ambos requieren revisión anatómica específica para Atlas. Modelos y bibliografía pendientes de auditoría médica.</div>
+  <div class="notice"><strong>Estado del proyecto:</strong> el nuevo diseño está en revisión. No se considera concluida la validación anatómica. La vista muscular utiliza Écorché (CC BY-SA 4.0) y el prototipo del sistema nervioso utiliza BodyParts3D 4.3 / OrganUI (CC BY-SA 2.1 JP). Este último solo representa estructuras parciales izquierdas y referencias vertebrales. Las mallas y fichas requieren auditoría médica antes de cerrar etapas.</div>
  </main>
 </div></body></html>
