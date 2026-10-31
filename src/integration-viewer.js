@@ -210,17 +210,17 @@ function pickRegion(region){
  }
 }
 function renderRegionButtons(){
- for(const id of ['region-shortcuts','region-tiles']){
-  const host=$(id);host.replaceChildren();
-  for(const region of QUICK_REGIONS){
-   const button=document.createElement('button');
-   button.type='button';
-   button.className='region-chip'+(region.id===state.group?' active':'');
-   button.setAttribute('aria-pressed',String(region.id===state.group));
-   button.textContent=region.label;
-   button.addEventListener('click',()=>pickRegion(region.id));
-   host.appendChild(button);
-  }
+ // Las regiones solo aparecen en el desplegable superior y dentro del catálogo,
+ // no en una segunda barra flotante sobre el modelo.
+ const host=$('region-tiles');host.replaceChildren();
+ for(const region of regionsForSystem(activeEntries(),state.system)){
+  const button=document.createElement('button');
+  button.type='button';
+  button.className='region-chip'+(region.id===state.group?' active':'');
+  button.setAttribute('aria-pressed',String(region.id===state.group));
+  button.textContent=region.label;
+  button.addEventListener('click',()=>pickRegion(region.id));
+  host.appendChild(button);
  }
 }
 function refreshMeshVisibility(){
