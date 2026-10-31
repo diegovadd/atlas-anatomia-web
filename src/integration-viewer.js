@@ -8,6 +8,8 @@ import {sourceLayer} from './muscle-detailed-data.js';
 import {JOINTS_GROUPS,JOINTS_KINDS} from './joints-data.js';
 import {VASCULAR_REGIONS} from './vascular-data.js';
 import {NERVE_GROUPS} from './nerve-data.js';
+import {VISCERA_REGISTRY,identifyVisceraMesh} from './viscera-data.js';
+import {QUICK_REGIONS,JOINT_VIEWS,NERVE_CONTEXT,visibleByLayer,visibleInRegion,updateSelection,isContextBone} from './exploration-rules.js';
 import {
  INTEGRATION_SYSTEMS,INTEGRATION_SYSTEM_MAP,INTEGRATION_REGIONS,
  INTEGRATION_ENTRIES,findStructures,MODEL_ALIGNMENT,normalizedRegion
@@ -38,7 +40,9 @@ const sources=new Map(INTEGRATION_SYSTEMS.map(s=>[s.id,s]));
 const indexed=new Map(INTEGRATION_SYSTEMS.map(s=>[s.id,INTEGRATION_ENTRIES.filter(e=>e.system===s.id)]));
 const sourceIndex=new Map([...indexed].map(([id,entries])=>[id,new Map(entries.map(e=>[e.sourceId,e]))]));
 const state={
- system:'bone',token:0,models:new Map(),recent:[],selected:null,group:'all',layer:'all',
+ system:'bone',token:0,models:new Map(),recent:[],selected:null,selectedIds:new Set(),
+ anchorId:null,subregion:'all',group:'all',layer:'all',
+ nerveBones:true,nerveDiscs:true,jointBoneOpacity:.4,
  hidden:new Set(),isolated:false,markMode:false,annotations:[],pointerDown:null,
  currentTarget:new THREE.Vector3(),radius:3,limit:60
 };
@@ -89,7 +93,8 @@ function boundsOf(meshes){
 function focusEntry(entry){
  const model=state.models.get(state.system);
  if(!model||!entry)return;
- const meshes=model.meshesById.get(entry.id)||[];
+ const ids=state.selectedIds.size>1?[...state.selectedIds]:[entry.id];
+ const meshes=ids.flatMap(id=>model.meshesById.get(id)||[]);
  const box=boundsOf(meshes);
  if(box.isEmpty())return;
  const size=box.getSize(new THREE.Vector3());
@@ -117,27 +122,88 @@ function layerOptions(){
  const sel=$('active-layer');sel.replaceChildren();
  const system=state.system;
  const options=system==='muscle'?[
-  ['all','Todas las estructuras'],['superficial','Músculos superficiales'],
-  ['deep','Músculos profundos'],['connective','Tejidos conectivos']
+  ['all','Todos los tejidos'],['superficial','Músculos superficiales'],
+  ['deep','Músculos profundos'],['connective','Tendones y fascias disponibles']
  ]:system==='bone'?[['all','Todos los huesos']]:
  system==='vessel'?[['all','Arterias y venas'],['artery','Arterias'],['vein','Venas']]:
- system==='nerve'?[['all','Todos los grupos'],...NERVE_GROUPS.filter(x=>x.id!=='all').map(x=>[x.id,x.label])]:
- [['all','Todos los tejidos'],...JOINTS_KINDS.filter(x=>x.id!=='all').map(x=>[x.id,x.name])];
+ system==='nerve'?NERVE_CONTEXT.map(x=>[x.id,x.label]):
+ system==='joint'?JOINT_VIEWS.map(x=>[x.id,x.label]):
+ [['all','Todos los órganos'],...new Set(activeEntries().map(x=>x.kind))].map(x=>Array.isArray(x)?x:[x,x]);
  for(const [id,label] of options){
-  const opt=document.createElement('option');opt.value=id;opt.textContent=label;sel.appendChild(opt);
+  const opt=document.createElement('option');opt.value=id;opt.textContent=label;
+  sel.appendChild(opt);
  }
  sel.value=state.layer;
+ $('nerve-context-controls').hidden=system!=='nerve';
+ $('joint-context-controls').hidden=system!=='joint';
+ $('nerve-show-bones').checked=state.nerveBones;
+ $('nerve-show-discs').checked=state.nerveDiscs;
+ $('joint-bone-opacity').value=String(state.jointBoneOpacity);
+}
+function regionAllows(entry){
+ return visibleInRegion(entry,state.group,state.system);
 }
 function matchesFilters(entry){
- if(state.group!=='all'&&entry.region!==state.group)return false;
- if(state.layer==='all')return true;
- if(state.system==='muscle'){
-  if(state.layer==='connective')return entry.kind==='connective';
-  return entry.kind!=='connective'&&entry.layer===state.layer;
- }
- return entry.kind===state.layer;
+ if(!regionAllows(entry))return false;
+ if(state.subregion!=='all'&&entry.subregion!==state.subregion&&
+   (entry.kind!==state.subregion)&&(entry.layer!==state.subregion))return false;
+ return visibleByLayer(entry,{
+  system:state.system,layer:state.layer,nerveBones:state.nerveBones,
+  nerveDiscs:state.nerveDiscs,jointBoneOpacity:state.jointBoneOpacity
+ });
 }
-function layerVisible(e){return !state.hidden.has(e.id)&&matchesFilters(e)&&(!state.isolated||state.selected?.id===e.id)}
+function layerVisible(e){
+ return !state.hidden.has(e.id)&&matchesFilters(e)&&
+  (!state.isolated||state.selectedIds.has(e.id));
+}
+function renderSubregions(){
+ const select=$('structure-subregion');select.replaceChildren();
+ const root=document.createElement('option');root.value='all';root.textContent='Todos los subgrupos';select.appendChild(root);
+ const visible=activeEntries().filter(e=>regionAllows(e));
+ const kinds=new Map();
+ for(const e of visible){
+  const key=e.subregion||e.kind||e.layer;
+  if(key)kinds.set(key,(kinds.get(key)||0)+1);
+ }
+ for(const [kind,count] of [...kinds].sort((a,b)=>String(a[0]).localeCompare(String(b[0]),'es'))){
+  const opt=document.createElement('option');opt.value=kind;opt.textContent=kind+' ('+count+')';select.appendChild(opt);
+ }
+ if(!kinds.has(state.subregion))state.subregion='all';
+ select.value=state.subregion;
+}
+function pickRegion(region){
+ state.group=region;state.subregion='all';state.limit=60;
+ clearSelection();
+ renderRegions();renderSubregions();refreshMeshVisibility();renderCatalogue();renderRegionButtons();
+ const model=activeModel();
+ if(model&&region!=='all'){
+  const meshes=[];
+  for(const entry of model.entries){
+   if(!regionAllows(entry)||isContextBone(entry,state.system))continue;
+   meshes.push(...(model.meshesById.get(entry.id)||[]));
+  }
+  const box=boundsOf(meshes);
+  if(!box.isEmpty()){
+   const size=box.getSize(new THREE.Vector3());
+   const target=box.getCenter(new THREE.Vector3());
+   setView('front',target,Math.max(size.x,size.y,size.z)*1.2);
+  }
+ }
+}
+function renderRegionButtons(){
+ for(const id of ['region-shortcuts','region-tiles']){
+  const host=$(id);host.replaceChildren();
+  for(const region of QUICK_REGIONS){
+   const button=document.createElement('button');
+   button.type='button';
+   button.className='region-chip'+(region.id===state.group?' active':'');
+   button.setAttribute('aria-pressed',String(region.id===state.group));
+   button.textContent=region.label;
+   button.addEventListener('click',()=>pickRegion(region.id));
+   host.appendChild(button);
+  }
+ }
+}
 function refreshMeshVisibility(){
  const model=activeModel();
  if(model){
@@ -146,7 +212,7 @@ function refreshMeshVisibility(){
    const show=entry&&layerVisible(entry);
    for(const mesh of meshes){
     mesh.visible=Boolean(show);
-    const chosen=state.selected?.id===id;
+    const chosen=state.selectedIds.has(id);
     const mat=mesh.material;
     if(chosen){
      mat.color.set('#fff0cb');mat.emissive.set('#6f4928');mat.emissiveIntensity=.28;
@@ -158,51 +224,70 @@ function refreshMeshVisibility(){
       mat.vertexColors=mesh.userData.atlasVertexColors;mat.needsUpdate=true;
      }
     }
-    const faded=state.selected&&!chosen&&!state.isolated&&show;
-    const opacity=faded?.27:1;
-    if(mat.opacity!==opacity||mat.transparent!==Boolean(faded)){
-     mat.opacity=opacity;mat.transparent=Boolean(faded);mat.depthWrite=!faded;mat.needsUpdate=true;
+    const faded=state.selectedIds.size>0&&!chosen&&!state.isolated&&show;
+    const contextBone=isContextBone(entry,state.system);
+    const boneAlpha=state.system==='joint'&&contextBone?state.jointBoneOpacity:
+      (state.system==='nerve'&&contextBone ? .40 : 1);
+    const opacity=faded?.25:(!chosen?boneAlpha:1);
+    const transparent=opacity<1;
+    if(mat.opacity!==opacity||mat.transparent!==transparent){
+     mat.opacity=opacity;mat.transparent=transparent;mat.depthWrite=!transparent;mat.needsUpdate=true;
     }
    }
   }
  }
- $('atlas-selection').hidden=!state.selected;
- for(const id of ['bubble-isolate','selection-focus','selection-hide','selection-isolate'])$(id).disabled=!state.selected;
+ $('atlas-selection').hidden=!state.selectedIds.size;
+ $('selection-count').textContent=state.selectedIds.size>1?state.selectedIds.size+' estructuras seleccionadas':'';
+ for(const id of ['bubble-isolate','selection-focus','selection-hide','selection-isolate'])$(id).disabled=!state.selectedIds.size;
  $('selection-isolate').textContent=state.isolated?'Mostrar entorno':'Aislar';
  if(state.selected){
-  $('atlas-selection-name').textContent=state.selected.name;
+  $('atlas-selection-name').textContent=state.selectedIds.size>1?state.selectedIds.size+' estructuras':state.selected.name;
   $('atlas-selection-system').textContent=sourceLabel(state.system).toUpperCase();
  }
 }
-function selectEntry(entry,focus=false){
+function selectEntry(entry,focus=false,event=null){
  if(!entry||entry.system!==state.system)return;
  state.hidden.delete(entry.id);
- // Un acceso directo de catálogo no debe ocultar el músculo por el filtro.
  if(!matchesFilters(entry)){
-  state.group='all';state.layer='all';$('structure-region').value='all';$('active-layer').value='all';
+  state.group='all';state.layer='all';state.subregion='all';
+  layerOptions();renderRegions();renderSubregions();renderRegionButtons();
  }
- state.selected=entry;state.isolated=false;
+ const multi=$('multi-select-toggle').checked||event?.ctrlKey||event?.metaKey;
+ const range=Boolean(event?.shiftKey);
+ const order=activeEntries().filter(matchesFilters).map(x=>x.id);
+ state.selectedIds=updateSelection(state.selectedIds,entry.id,{
+  add:multi,range,anchor:state.anchorId,order
+ });
+ state.anchorId=range?state.anchorId:entry.id;
+ state.selected=state.selectedIds.size?(state.selectedIds.has(entry.id)?entry:
+  activeModel()?.byId.get([...state.selectedIds].at(-1))||null):null;
+ state.isolated=false;
  refreshMeshVisibility();renderInfo();renderCatalogue();
- if(focus&&activeModel())focusEntry(entry);
+ if(focus&&state.selected&&activeModel())focusEntry(state.selected);
+ if(state.selectedIds.size)openDrawer('drawer-info',true);
+ else closeDrawers();
 }
 function clearSelection(){
- state.selected=null;state.isolated=false;
+ state.selected=null;state.selectedIds.clear();state.anchorId=null;state.isolated=false;
  refreshMeshVisibility();renderInfo();renderCatalogue();
 }
 function isolate(){
- if(!state.selected)return;
+ if(!state.selectedIds.size)return;
  state.isolated=!state.isolated;refreshMeshVisibility();
 }
 function hideSelected(){
- if(!state.selected)return;
- state.hidden.add(state.selected.id);
- const name=state.selected.name;
- clearSelection();showStatus('Ocultado temporalmente: '+name+'. Recupéralo desde el catálogo o restablece la vista.');
+ if(!state.selectedIds.size)return;
+ for(const id of state.selectedIds)state.hidden.add(id);
+ const count=state.selectedIds.size;
+ clearSelection();
+ showStatus('Retiradas '+count+' estructuras. Recupera las piezas desde el catálogo o restablece la vista.');
 }
 function restore(){
- state.group='all';state.layer='all';state.hidden.clear();state.isolated=false;state.selected=null;
+ state.group='all';state.layer='all';state.subregion='all';state.hidden.clear();
+ state.isolated=false;state.selected=null;state.selectedIds.clear();state.anchorId=null;
  $('structure-query').value='';state.limit=60;
- layerOptions();renderRegions();refreshMeshVisibility();renderCatalogue();renderInfo();
+ layerOptions();renderRegions();renderSubregions();renderRegionButtons();
+ refreshMeshVisibility();renderCatalogue();renderInfo();
  if(activeModel())setView('front',state.currentTarget,state.radius);
  showStatus('Vista y capas restauradas para '+sourceLabel(state.system)+'.');
 }
@@ -221,14 +306,40 @@ function makeBoneEntries(root){
   const rawRegion=classifyRegion(raw,obj.parent?.name||'');
   const entry={
    system:'bone',id:key,sourceId:raw,name:info.name||raw,originalName:raw,
-   kind:'bone',region:normalizedRegion('bone',rawRegion)||null
+   kind:'bone',region:rawRegion==='spine'&&/cervical/i.test(raw)?'neck':
+    normalizedRegion('bone',rawRegion)||null,
+   subregion:info.category||null
   };
   const frozen=Object.freeze(entry);
   arr.push(frozen);byId.set(key,frozen);meshesById.set(key,[obj]);map.set(obj,frozen);
  });
  return {entries:arr,byId,meshesById,meshMap:map};
 }
+function makeVisceraEntries(root){
+ const registry=sourceIndex.get('viscera')||new Map();
+ const byId=new Map(),meshesById=new Map(),meshMap=new Map();
+ let unnamed=0;
+ root.traverse(obj=>{
+  if(!obj.isMesh)return;
+  const candidates=[obj.userData?.zname,obj.userData?.name,obj.name,
+   obj.parent?.userData?.zname,obj.parent?.name];
+  const identified=candidates.map(identifyVisceraMesh).find(Boolean);
+  const entry=identified?registry.get(identified.id):null;
+  const raw=String(candidates.find(x=>typeof x==='string'&&x.trim())||'Malla sin etiqueta');
+  const item=entry||Object.freeze({
+   system:'viscera',id:'organ-source-'+unnamed++,sourceId:raw,
+   name:raw,originalName:raw,kind:'No clasificado',
+   region:null,subregion:'Sin clasificación confirmada'
+  });
+  if(!byId.has(item.id)){byId.set(item.id,item);meshesById.set(item.id,[])}
+  meshesById.get(item.id).push(obj);meshMap.set(obj,item);
+ });
+ const entries=[...byId.values()];
+ if(!entries.length)throw Error('El archivo de órganos no contiene mallas.');
+ return {entries,byId,meshesById,meshMap};
+}
 function makeStandardEntries(system,root){
+ if(system==='viscera')return makeVisceraEntries(root);
  const entries=indexed.get(system)||[];
  const bySource=sourceIndex.get(system)||new Map();
  const candidates=new Map(entries.map(e=>[e.id,[]]));
@@ -253,7 +364,10 @@ function makeStandardEntries(system,root){
 }
 function materialFor(system,entry,mesh){
  const current=Array.isArray(mesh.material)?mesh.material[0]:mesh.material;
- const kinds={bone:'#c9c3b7',muscle:'#a96d68',nerve:'#d6b680',vessel:entry.kind==='vein'?'#6592bb':'#c26562',joint:entry.kind==='bone'?'#b8b4aa':'#c2b27f'};
+ const kinds={bone:'#c9c3b7',muscle:'#a96d68',nerve:'#d6b680',
+  vessel:entry.kind==='vein'?'#6592bb':'#c26562',
+  joint:entry.kind==='bone'?'#b8b4aa':entry.kind==='fibrocartilage'?'#91a8bc':'#c2b27f',
+  viscera:'#bd867e'};
  const mat=new THREE.MeshStandardMaterial({color:kinds[system],roughness:.86,metalness:0,side:THREE.DoubleSide});
  if(system==='muscle'&&(current?.vertexColors||mesh.geometry?.getAttribute('color'))){
   mat.color.set('#ffffff');mat.vertexColors=true;
@@ -332,8 +446,9 @@ function activateCached(system){
  for(const [name,data] of state.models)data.root.visible=name===system;
  const model=state.models.get(system);
  state.currentTarget.copy(model.center);state.radius=model.radius;
- state.hidden.clear();state.selected=null;state.isolated=false;state.group='all';state.layer='all';
- layerOptions();renderRegions();
+ state.hidden.clear();state.selected=null;state.selectedIds.clear();state.anchorId=null;
+ state.isolated=false;state.group='all';state.subregion='all';state.layer='all';
+ layerOptions();renderRegions();renderSubregions();renderRegionButtons();
  refreshMeshVisibility();renderCatalogue();renderInfo();renderLandmarks();
  setView('front');
  touchCache(system);
@@ -349,8 +464,9 @@ async function loadSystem(system){
  const token=++state.token;
  for(const [name,data] of state.models)data.root.visible=name===system;
  if(activateCached(system))return;
- state.selected=null;state.hidden.clear();state.isolated=false;state.group='all';state.layer='all';
- layerOptions();renderRegions();renderCatalogue();renderInfo();
+ state.selected=null;state.selectedIds.clear();state.anchorId=null;
+ state.hidden.clear();state.isolated=false;state.group='all';state.subregion='all';state.layer='all';
+ layerOptions();renderRegions();renderSubregions();renderRegionButtons();renderCatalogue();renderInfo();
  setLoading('Preparando sistema '+sourceLabel(system));
  const conf=INTEGRATION_SYSTEM_MAP[system];
  $('atlas-loading-text').textContent='Fuente externa · aprox. '+(conf.bytes/1e6).toFixed(1)+' MB. Se muestra solo un sistema.';
@@ -396,26 +512,43 @@ function renderCatalogue(){
  }
  for(const entry of entries.slice(0,state.limit)){
   const button=document.createElement('button');button.type='button';
-  button.className='structure-entry'+(state.selected?.id===entry.id?' active':'');
-  button.setAttribute('aria-pressed',String(state.selected?.id===entry.id));
+  button.className='structure-entry'+(state.selectedIds.has(entry.id)?' active':'');
+  button.setAttribute('aria-pressed',String(state.selectedIds.has(entry.id)));
   if(state.hidden.has(entry.id))button.classList.add('hidden');
   const title=document.createElement('strong');title.textContent=entry.name+(state.hidden.has(entry.id)?' · retirado':'');
   const original=document.createElement('small');original.textContent=entry.originalName;
   button.append(title,original);
-  button.addEventListener('click',()=>selectEntry(entry,true));
+  button.addEventListener('click',event=>selectEntry(entry,true,event));
   host.appendChild(button);
  }
  $('load-more-structures').hidden=entries.length<=state.limit;
 }
 function renderInfo(){
  const entry=state.selected;
- $('empty-info').hidden=!!entry;$('structure-info').hidden=!entry;
+ $('empty-info').hidden=!!entry;
+ $('structure-info').hidden=!entry;
+ const selectedHost=$('info-selected-list');selectedHost.replaceChildren();
+ selectedHost.hidden=state.selectedIds.size<2;
  if(!entry)return;
- $('info-name').textContent=entry.name;
+ $('info-name').textContent=state.selectedIds.size>1?
+  state.selectedIds.size+' estructuras seleccionadas':entry.name;
  $('info-system').textContent=sourceLabel(entry.system);
  $('info-original').textContent=entry.originalName;
  $('info-kind').textContent=entry.kind||'No especificado';
  $('info-region').textContent=INTEGRATION_REGIONS.find(r=>r.id===entry.region)?.label||'No clasificada';
+ $('info-source-warning').textContent=state.system==='joint'?
+  'Las superficies óseas, meniscos y discos se muestran para inspección visual. Esta versión no calcula colisiones ni certifica contacto óseo, articular o congruencia de las superficies.':
+  state.system==='viscera'?
+  'Los nombres de órganos provienen de un inventario editorial externo. Las estructuras realmente segmentadas dependen del GLB. Datos académicos pendientes de cotejo.':
+  'Identificación provisional de origen. Relaciones, inserciones e inervación requieren revisión con fuentes académicas.';
+ if(state.selectedIds.size>1){
+  const model=activeModel();
+  for(const id of state.selectedIds){
+   const item=model?.byId.get(id);if(!item)continue;
+   const label=document.createElement('span');label.textContent=item.name;
+   selectedHost.appendChild(label);
+  }
+ }
 }
 function renderSystemMenu(){
  const host=$('system-list');host.replaceChildren();
@@ -434,8 +567,11 @@ function closeDrawers(){
  for(const id of ['drawer-systems','drawer-catalogue','drawer-info','drawer-landmarks'])$(id).hidden=true;
  $('atlas-backdrop').hidden=true;
 }
-function openDrawer(id){
- closeDrawers();$(id).hidden=false;$('atlas-backdrop').hidden=false;
+function openDrawer(id,passive=false){
+ closeDrawers();$(id).hidden=false;
+ // Ficha automática sin cortina: Ctrl/Cmd+clic sigue permitiendo ampliar selección
+ $('atlas-backdrop').hidden=passive||id==='drawer-info';
+ $('drawer-info').classList.toggle('auto-info',id==='drawer-info');
  if(id==='drawer-systems')renderSystemMenu();
  if(id==='drawer-catalogue')$('structure-query').focus();
 }
@@ -509,7 +645,7 @@ canvas.addEventListener('pointerup',event=>{
  if(!first)return;
  const entry=model.meshMap.get(first.object);
  if(state.markMode)placeLandmark(first,entry);
- else selectEntry(entry);
+ else selectEntry(entry,false,event);
 });
 for(const item of INTEGRATION_SYSTEMS){
  const option=document.createElement('option');option.value=item.id;option.textContent=item.label;
@@ -519,7 +655,19 @@ $('active-system').addEventListener('change',e=>loadSystem(e.target.value));
 $('active-layer').addEventListener('change',e=>{
  state.layer=e.target.value;clearSelection();renderCatalogue();
 });
-$('structure-region').addEventListener('change',e=>{state.group=e.target.value;clearSelection();renderCatalogue()});
+$('structure-region').addEventListener('change',e=>pickRegion(e.target.value));
+$('structure-subregion').addEventListener('change',e=>{
+ state.subregion=e.target.value;clearSelection();renderCatalogue();
+});
+$('nerve-show-bones').addEventListener('change',e=>{
+ state.nerveBones=e.target.checked;clearSelection();renderCatalogue();
+});
+$('nerve-show-discs').addEventListener('change',e=>{
+ state.nerveDiscs=e.target.checked;clearSelection();renderCatalogue();
+});
+$('joint-bone-opacity').addEventListener('input',e=>{
+ state.jointBoneOpacity=Number(e.target.value);refreshMeshVisibility();
+});
 $('structure-query').addEventListener('input',()=>{state.limit=60;renderCatalogue()});
 $('load-more-structures').addEventListener('click',()=>{state.limit+=60;renderCatalogue()});
 $('bubble-systems').addEventListener('click',()=>openDrawer('drawer-systems'));
@@ -583,5 +731,5 @@ window.addEventListener('keydown',e=>{
  }
  closeDrawers();
 });
-renderRegions();layerOptions();renderCatalogue();renderLandmarks();renderInfo();
+renderRegions();layerOptions();renderSubregions();renderRegionButtons();renderCatalogue();renderLandmarks();renderInfo();
 loadSystem('bone');

@@ -10,6 +10,7 @@ import {ECORCHE_LABELS} from './integration-muscles.js';
 import {NERVE_SOURCE,NERVE_REGISTRY} from './nerve-data.js';
 import {VASCULAR_SOURCE,VASCULAR_STRUCTURES} from './vascular-data.js';
 import {JOINTS_SOURCE,JOINTS_STRUCTURES} from './joints-data.js';
+import {VISCERA_SOURCE,VISCERA_REGISTRY} from './viscera-data.js';
 
 export const INTEGRATION_SYSTEMS=Object.freeze([
  {id:'bone',label:'Óseo',url:'https://cdn.jsdelivr.net/gh/SeemaBansal1/3d-human-body-anatomy@28912432581accd7a1c62129d55f0e9758221d48/web/public/models/skeleton.glb',
@@ -27,7 +28,10 @@ export const INTEGRATION_SYSTEMS=Object.freeze([
   meshCount:VASCULAR_STRUCTURES.length,kind:'arterias y venas'},
  {id:'joint',label:'Articular',url:JOINTS_SOURCE.url,license:JOINTS_SOURCE.license,
   attribution:JOINTS_SOURCE.attribution,viewer:'./articulaciones.html',bytes:JOINTS_SOURCE.bytes,
-  meshCount:JOINTS_STRUCTURES.length,kind:'ligamentos, cápsulas y discos'}
+  meshCount:JOINTS_STRUCTURES.length,kind:'ligamentos, cápsulas y discos'},
+ {id:'viscera',label:'Vísceras y órganos',url:VISCERA_SOURCE.url,license:VISCERA_SOURCE.license,
+  attribution:VISCERA_SOURCE.attribution,viewer:'./integracion.html',bytes:VISCERA_SOURCE.bytes,
+  meshCount:null,kind:'vísceras y órganos, inventario parcial'}
 ].map(Object.freeze));
 export const INTEGRATION_SYSTEM_MAP=Object.freeze(Object.fromEntries(INTEGRATION_SYSTEMS.map(x=>[x.id,x])));
 export const INTEGRATION_REGIONS=Object.freeze([
@@ -83,13 +87,15 @@ const muscleEntries=ECORCHE_LABELS.map((x,i)=>{
   x.name,normalizedRegion('muscle',info?.region),info?.kind||'muscle',x.name,info?.layer||null);
 });
 const nerveEntries=NERVE_REGISTRY.map(x=>asEntry('nerve',x.id,x.name,x.sourceName,
- normalizedRegion('nerve',x.group),x.group,x.id));
+ x.id==='medulla-oblongata'?'head':/^nerve-c\d+$/.test(x.id)?'neck':
+ /^nerve-t\d+$/.test(x.id)?'chest':normalizedRegion('nerve',x.group),x.group,x.id));
 const vesselEntries=VASCULAR_STRUCTURES.map(x=>asEntry('vessel',x.id,x.name,x.originalName,
  normalizedRegion('vessel',x.region),x.kind,x.id));
 const jointEntries=JOINTS_STRUCTURES.map(x=>asEntry('joint',x.id,x.name,x.originalName,
  normalizedRegion('joint',x.group),x.kind,x.id));
+const visceraEntries=VISCERA_REGISTRY.map(x=>asEntry('viscera',x.id,x.name,x.originalName,x.region,x.category,x.id));
 export const INTEGRATION_ENTRIES=Object.freeze([
- ...muscleEntries,...nerveEntries,...vesselEntries,...jointEntries
+ ...muscleEntries,...nerveEntries,...vesselEntries,...jointEntries,...visceraEntries
 ]);
 export function findStructures({query='',region='all',systems=INTEGRATION_SYSTEMS.map(s=>s.id)}={}){
  const norm=String(query).trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
