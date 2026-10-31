@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="es">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1">
+ <meta name="theme-color" content="#04090e">
+ <meta name="description" content="Atlas 3D: anatomía vascular por regiones, arterias y venas individuales agrupadas y relaciones didácticas.">
+ <title>ATLAS · Sistema vascular · Laboratorio 04</title>
+ <link rel="preconnect" href="https://fonts.googleapis.com">
+ <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600&display=swap" rel="stylesheet">
+ <link rel="stylesheet" href="./src/vascular-styles.css">
+ <script type="importmap">
+ {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
+ </script>
+ <script type="module" src="./src/vascular-viewer.js"></script>
+</head>
+<body>
+<div class="vasc-app">
+ <header class="vasc-top">
+  <div class="vasc-brand"><a href="./preview.html" aria-label="Ir a la portada de Atlas">ATLAS<span>.</span></a><span>/</span><strong>Vascular</strong><small>LAB · ETAPA 04</small></div>
+  <nav aria-label="Navegación por sistemas">
+   <a href="./index.html">Óseo</a>
+   <a href="./musculos.html">Muscular</a><a href="./nervios.html">Nervioso</a>
+   <a href="./preview.html">Sistemas</a>
+  </nav>
+ </header>
+ <main id="vasc-viewport" class="vasc-viewport" aria-label="Visor tridimensional de arterias y venas principales">
+  <canvas id="vasc-canvas" aria-label="Modelo anatómico tridimensional, seleccionable con el ratón"></canvas>
+  <nav class="vasc-rail" aria-label="Controles de exploración">
+   <button type="button" id="vasc-open-list" aria-label="Abrir árbol anatómico"><span aria-hidden="true">☷</span>Regiones</button>
+   <button type="button" id="vasc-open-search" aria-label="Buscar estructuras"><span aria-hidden="true">⌕</span>Buscar</button>
+   <button type="button" id="vasc-open-info" aria-label="Ver ficha anatómica"><span aria-hidden="true">ⓘ</span>Ficha</button>
+   <button type="button" id="vasc-rail-isolate" disabled><span aria-hidden="true">◎</span>Aislar</button>
+   <button type="button" id="vasc-reset-rail"><span aria-hidden="true">↺</span>Reiniciar</button>
+  </nav>
+  <section class="vasc-intro" id="vasc-intro">
+   <span class="eyebrow">ETAPA 04 · LABORATORIO VASCULAR 3D</span>
+   <h1>Explora las <em>arterias y venas</em> en tres dimensiones</h1>
+   <p>Explora los principales vasos sanguíneos con 52 grupos seleccionables. Distingue arterias y venas por colores, aísla una estructura y sigue relaciones entre segmentos.</p>
+   <button type="button" id="vasc-intro-list">Explorar las estructuras</button>
+   <small>Mallas abiertas de BodyParts3D 4.3, adaptadas por OrganUI. No incluyen microvasculatura ni todos los vasos.</small>
+  </section>
+  <div class="vasc-status" id="vasc-status" aria-live="polite" role="status">Iniciando visor vascular 3D…</div>
+  <section class="vasc-source" aria-label="Licencia y origen de las mallas">
+   <span>Modelo: <a href="https://github.com/organui/vessels-3d" target="_blank" rel="noopener noreferrer">OrganUI / BodyParts3D © DBCLS</a></span>
+   <a href="https://creativecommons.org/licenses/by-sa/2.1/jp/deed.en" target="_blank" rel="noopener noreferrer">CC BY-SA 2.1 JP</a>
+  </section>
+  <section class="vasc-selected" id="vasc-selected" hidden>
+   <span class="eyebrow" id="vasc-selected-group">ESTRUCTURA</span>
+   <strong id="vasc-selected-name">Selecciona un vaso</strong>
+   <div class="vasc-selection-actions">
+    <button type="button" id="vasc-focus">Centrar</button>
+    <button type="button" id="vasc-isolate">Aislar</button>
+    <button type="button" id="vasc-hide">Ocultar</button>
+    <button type="button" id="vasc-selected-info">Ficha ↗</button>
+   </div>
+  </section>
+  <div class="vasc-toolbar" aria-label="Vistas y capas">
+   <button type="button" id="vasc-view-front">Anterior</button>
+   <button type="button" id="vasc-view-left">Lateral</button>
+   <button type="button" id="vasc-view-back">Posterior</button>
+   <span class="vasc-toolbar-sep" aria-hidden="true"></span>
+   <button type="button" id="vasc-kind-arteries" aria-pressed="false">Solo arterias</button>
+   <button type="button" id="vasc-kind-veins" aria-pressed="false">Solo venas</button>
+   <button type="button" id="vasc-kind-all" aria-pressed="true">Ambos sistemas</button>
+   <button type="button" id="vasc-show-all">Restablecer capas</button>
+  </div>
+  <div class="vasc-loading" id="vasc-loading">
+   <div class="vasc-loading-spinner" aria-hidden="true"></div>
+   <strong>Preparando mallas tridimensionales</strong>
+   <p id="vasc-loading-text">Descargando 2,4 MB desde la fuente abierta…</p>
+   <button type="button" id="vasc-retry" hidden>Reintentar carga</button>
+  </div>
+ </main>
+ <button type="button" class="vasc-dismiss" id="vasc-dismiss" aria-label="Cerrar panel" hidden></button>
+ <aside class="vasc-drawer vasc-list-drawer" id="vasc-list-drawer" hidden aria-label="Catálogo de estructuras vasculares">
+  <div class="vasc-drawer-head"><div><span class="eyebrow">EXPLORACIÓN POR ESTRUCTURA</span><h2>Árbol vascular</h2></div><button type="button" id="vasc-close-list" aria-label="Cerrar lista">×</button></div>
+  <div class="vasc-drawer-body">
+   <div class="vasc-panel-highlight"><strong>Modelo abierto, alcance parcial</strong><p>52 grupos reales de arterias y venas por regiones; los vasos pareados suelen estar agrupados. Faltan ramas pequeñas y vasos intraparenquimatosos.</p></div>
+   <label for="vasc-group">Región anatómica</label>
+   <select id="vasc-group"></select>
+   <label for="vasc-query">Buscar vaso por nombre o FMA</label>
+   <input type="search" id="vasc-query" placeholder="Aorta, femoral, FMA..." autocomplete="off">
+   <label for="vasc-kind">Tipo de vaso</label>
+   <select id="vasc-kind"><option value="all">Arterias y venas</option><option value="artery">Solo arterias</option><option value="vein">Solo venas</option></select>
+   <div class="vasc-list-meta"><strong>Estructuras</strong><span id="vasc-count">52 grupos disponibles</span></div>
+   <div id="vasc-list" class="vasc-list" role="list" aria-label="Estructuras seleccionables"></div>
+   <p class="vasc-footnote">Los vasos bilaterales pueden estar unidos en una sola malla y no siempre se seleccionan por separado. No se superponen con otros modelos sin alinear coordenadas.</p>
+  </div>
+ </aside>
+ <aside class="vasc-drawer vasc-info-drawer" id="vasc-info-drawer" hidden aria-label="Ficha de estructura vascular">
+  <div class="vasc-drawer-head"><div><span class="eyebrow">FICHA · PRELIMINAR</span><h2>Detalles anatómicos</h2></div><button type="button" id="vasc-close-info" aria-label="Cerrar ficha">×</button></div>
+  <div class="vasc-drawer-body">
+   <p id="vasc-info-empty">Selecciona una arteria o vena en el modelo o el catálogo.</p>
+   <div id="vasc-info-content" hidden>
+    <h3 id="vasc-info-title"></h3>
+    <p id="vasc-info-subtitle"></p>
+    <dl class="vasc-data-grid">
+     <div><dt>Región</dt><dd id="vasc-info-group"></dd></div>
+     <div><dt>Tipo</dt><dd id="vasc-info-kind"></dd></div>
+     <div><dt>Nombre de origen</dt><dd id="vasc-info-source"></dd></div>
+     <div><dt>Identificador FMA</dt><dd id="vasc-info-fma"></dd></div>
+     <div><dt>Segmentación</dt><dd id="vasc-info-side"></dd></div>
+    </dl>
+    <section class="vasc-field"><h4>Conexiones de referencia del atlas</h4><div id="vasc-relations"></div></section>
+    <section class="vasc-field"><h4>Trayecto y relaciones anatómicas</h4><p>La secuencia muestra vasos conectados conceptualmente, no una simulación de flujo sanguíneo. La revisión de ramificaciones, trayectos y variaciones con Moore y Rouvière está pendiente.</p></section>
+    <button type="button" id="vasc-info-isolate">Aislar esta estructura</button>
+   </div>
+   <section class="vasc-field vasc-limit">
+    <h4>Limitaciones del modelo</h4>
+    <ul id="vasc-limits"></ul>
+    <p>Modelo BodyParts3D / Anatomography 4.3 © DBCLS, adaptado por OrganUI, CC BY-SA 2.1 Japan. Las mallas representan grupos vasculares simplificados, pendientes de auditoría académica de Atlas.</p>
+   </section>
+  </div>
+ </aside>
+</div>
+</body>
+</html>
