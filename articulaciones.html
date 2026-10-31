@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="es">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1">
+ <meta name="theme-color" content="#04090e">
+ <meta name="description" content="Atlas 3D: laboratorio de articulaciones, ligamentos, cápsulas y meniscos por regiones.">
+ <title>ATLAS · Articulaciones y ligamentos · Laboratorio 05</title>
+ <link rel="preconnect" href="https://fonts.googleapis.com">
+ <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600&display=swap" rel="stylesheet">
+ <link rel="stylesheet" href="./src/joints-styles.css">
+ <script type="importmap">
+ {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
+ </script>
+ <script type="module" src="./src/joints-viewer.js"></script>
+</head>
+<body>
+<div class="joint-app">
+ <header class="joint-top">
+  <div class="joint-brand"><a href="./preview.html" aria-label="Ir a la portada de Atlas">ATLAS<span>.</span></a><span>/</span><strong>Articulaciones</strong><small>LAB · ETAPA 05</small></div>
+  <nav aria-label="Navegación por sistemas">
+   <a href="./index.html">Óseo</a>
+   <a href="./musculos.html">Muscular</a><a href="./nervios.html">Nervioso</a>
+   <a href="./vasos.html">Vascular</a><a href="./preview.html">Sistemas</a>
+  </nav>
+ </header>
+ <main id="joint-viewport" class="joint-viewport" aria-label="Visor 3D de ligamentos, articulaciones y tejidos periarticulares">
+  <canvas id="joint-canvas" aria-label="Modelo anatómico tridimensional, seleccionable con el ratón"></canvas>
+  <nav class="joint-rail" aria-label="Controles de exploración">
+   <button type="button" id="joint-open-list" aria-label="Abrir árbol anatómico"><span aria-hidden="true">☷</span>Regiones</button>
+   <button type="button" id="joint-open-search" aria-label="Buscar estructuras"><span aria-hidden="true">⌕</span>Buscar</button>
+   <button type="button" id="joint-open-info" aria-label="Ver ficha anatómica"><span aria-hidden="true">ⓘ</span>Ficha</button>
+   <button type="button" id="joint-rail-isolate" disabled><span aria-hidden="true">◎</span>Aislar</button>
+   <button type="button" id="joint-reset-rail"><span aria-hidden="true">↺</span>Reiniciar</button>
+  </nav>
+  <section class="joint-intro" id="joint-intro">
+   <span class="eyebrow">ETAPA 05 · LIGAMENTOS Y ARTICULACIONES</span>
+   <h1>Explora los <em>ligamentos y complejos articulares</em> en 3D</h1>
+   <p>Visualiza 197 grupos de ligamentos, cápsulas, meniscos, discos y huesos de contexto. Filtra por región y descubre las estructuras ocultas por otras capas.</p>
+   <button type="button" id="joint-intro-list">Explorar las estructuras</button>
+   <small>Modelo de Z-Anatomy adaptado por OrganUI. Los tendones no están incluidos en este recurso 3D.</small>
+  </section>
+  <div class="joint-status" id="joint-status" aria-live="polite" role="status">Iniciando visor de articulaciones 3D…</div>
+  <section class="joint-source" aria-label="Licencia y origen de las mallas">
+   <span>Modelo: <a href="https://github.com/organui/organui" target="_blank" rel="noopener noreferrer">Z-Anatomy / BodyParts3D · OrganUI</a></span>
+   <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>
+  </section>
+  <section class="joint-selected" id="joint-selected" hidden>
+   <span class="eyebrow" id="joint-selected-group">ESTRUCTURA</span>
+   <strong id="joint-selected-name">Selecciona un ligamento o una articulación</strong>
+   <div class="joint-selection-actions">
+    <button type="button" id="joint-focus">Centrar</button>
+    <button type="button" id="joint-isolate">Aislar</button>
+    <button type="button" id="joint-hide">Retirar capa</button>
+    <button type="button" id="joint-selected-info">Ficha ↗</button>
+   </div>
+  </section>
+  <div class="joint-toolbar" aria-label="Vistas y capas">
+   <button type="button" id="joint-view-front">Anterior</button>
+   <button type="button" id="joint-view-left">Lateral</button>
+   <button type="button" id="joint-view-back">Posterior</button>
+   <span class="joint-toolbar-sep" aria-hidden="true"></span>
+   <button type="button" id="joint-kind-ligaments" aria-pressed="false">Ligamentos</button>
+   <button type="button" id="joint-kind-cartilage" aria-pressed="false">Discos y meniscos</button>
+   <button type="button" id="joint-context" aria-pressed="true">Ocultar huesos</button>
+   <button type="button" id="joint-kind-all" aria-pressed="true">Todos los tejidos</button>
+   <button type="button" id="joint-show-all">Restablecer capas</button>
+  </div>
+  <div class="joint-loading" id="joint-loading">
+   <div class="joint-loading-spinner" aria-hidden="true"></div>
+   <strong>Preparando mallas tridimensionales</strong>
+   <p id="joint-loading-text">Descargando 2,9 MB de geometría abierta…</p>
+   <button type="button" id="joint-retry" hidden>Reintentar carga</button>
+  </div>
+ </main>
+ <button type="button" class="joint-dismiss" id="joint-dismiss" aria-label="Cerrar panel" hidden></button>
+ <aside class="joint-drawer joint-list-drawer" id="joint-list-drawer" hidden aria-label="Catálogo de estructuras articulares">
+  <div class="joint-drawer-head"><div><span class="eyebrow">EXPLORACIÓN POR ESTRUCTURA</span><h2>Complejos articulares</h2></div><button type="button" id="joint-close-list" aria-label="Cerrar lista">×</button></div>
+  <div class="joint-drawer-body">
+   <div class="joint-panel-highlight"><strong>Modelo abierto, alcance parcial</strong><p>197 estructuras de ligamentos, cápsulas, discos, meniscos y huesos de contexto. Muchas parejas derecha/izquierda están agrupadas. No hay tendones individuales en esta malla.</p></div>
+   <label for="joint-group">Región anatómica</label>
+   <select id="joint-group"></select>
+   <label for="joint-query">Buscar estructura por nombre</label>
+   <input type="search" id="joint-query" placeholder="Ligamento cruzado, menisco, hombro..." autocomplete="off">
+   <label for="joint-kind">Tipo de tejido</label>
+   <select id="joint-kind"></select>
+   <div class="joint-panel-highlight"><strong>Tendones: módulo complementario</strong><p>Esta malla no contiene tendones. Puedes consultar los tendones y fascias disponibles en el modelo muscular sin superponer archivos que aún no están alineados.</p><a href="./musculos.html">Explorar tejido conectivo muscular →</a></div>
+   <div class="joint-list-meta"><strong>Estructuras</strong><span id="joint-count">197 estructuras disponibles</span></div>
+   <div id="joint-list" class="joint-list" role="list" aria-label="Estructuras seleccionables"></div>
+   <p class="joint-footnote">Algunos ligamentos bilaterales se agrupan en una malla. Los huesos se representan por conjuntos. Las relaciones mecánicas y anclajes anatómicos están pendientes de comprobación.</p>
+  </div>
+ </aside>
+ <aside class="joint-drawer joint-info-drawer" id="joint-info-drawer" hidden aria-label="Ficha de estructura articular">
+  <div class="joint-drawer-head"><div><span class="eyebrow">FICHA · PRELIMINAR</span><h2>Detalles anatómicos</h2></div><button type="button" id="joint-close-info" aria-label="Cerrar ficha">×</button></div>
+  <div class="joint-drawer-body">
+   <p id="joint-info-empty">Selecciona un ligamento, cápsula, disco o menisco en el modelo o el catálogo.</p>
+   <div id="joint-info-content" hidden>
+    <h3 id="joint-info-title"></h3>
+    <p id="joint-info-subtitle"></p>
+    <dl class="joint-data-grid">
+     <div><dt>Región</dt><dd id="joint-info-group"></dd></div>
+     <div><dt>Tipo</dt><dd id="joint-info-kind"></dd></div>
+     <div><dt>Nombre original de la fuente</dt><dd id="joint-info-source"></dd></div>
+     <div><dt>Segmentación</dt><dd id="joint-info-side"></dd></div>
+     <div><dt>Traducción</dt><dd id="joint-info-translation"></dd></div>
+    </dl>
+    <section class="joint-field"><h4>Otras estructuras de la región</h4><div id="joint-relations"></div></section>
+    <section class="joint-field"><h4>Articulación, inserciones y biomecánica</h4><p>No se ofrecen inserciones, amplitudes de movimiento ni estabilizadores como definitivos: su revisión con Moore y Rouvière está pendiente. La malla es estática, no una simulación biomecánica.</p></section>
+    <button type="button" id="joint-info-isolate">Aislar esta estructura</button>
+   </div>
+   <section class="joint-field joint-limit">
+    <h4>Limitaciones del modelo</h4>
+    <ul id="joint-limits"></ul>
+    <p>Modelo Z-Anatomy (Gauthier Kervyn y colaboradores), basado en parte en BodyParts3D © DBCLS, adaptado por OrganUI bajo CC BY-SA 4.0. Mallas simplificadas; validez clínica y biomecánica no acreditadas.</p>
+   </section>
+  </div>
+ </aside>
+</div>
+</body>
+</html>
