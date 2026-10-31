@@ -71,6 +71,16 @@ export function visibleInRegion(entry,region='all',system='bone'){
   (region==='head'&&entry.region==='skull')||
   (region==='chest'&&entry.region==='thorax');
 }
+/** Regiones que realmente contienen estructuras del sistema activo.
+ * Los huesos de contexto articular no habilitan regiones ficticias.
+ * Si todavía no se cargó un catálogo (óseo), ofrecemos el menú completo.
+ */
+export function regionsForSystem(entries,system){
+ if(!Array.isArray(entries)||!entries.length)return QUICK_REGIONS;
+ const relevant=entries.filter(entry=>!isContextBone(entry,system));
+ return QUICK_REGIONS.filter(region=>region.id==='all'||
+  relevant.some(entry=>visibleInRegion(entry,region.id,system)));
+}
 export function updateSelection(previous,id,{add=false,range=false,anchor=null,order=[]}={}){
  const next=new Set(previous);
  if(range&&anchor&&order.includes(anchor)&&order.includes(id)){
