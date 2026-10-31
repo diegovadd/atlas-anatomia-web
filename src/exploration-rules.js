@@ -64,7 +64,8 @@ export function visibleInRegion(entry,region='all',system='bone'){
  // La fuente articular agrupa huesos de varias regiones en 6 conjuntos.
  // Se preservan como contexto al explorar rodilla, cadera, mandíbula, etc.
  if(system==='joint'&&entry.kind==='bone')return true;
- if(system==='nerve'&&['bones','discs'].includes(entry.kind)&&['neck','back','chest'].includes(region))return true;
+ // La columna se filtra por tramo: cervical, torácico, lumbar o sacro.
+ // Evitar mostrar todas las vértebras al seleccionar solo cuello o tórax.
  return entry.region===region||
   (region==='back'&&entry.region==='spine')||
   (region==='head'&&entry.region==='skull')||
