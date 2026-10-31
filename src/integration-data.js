@@ -12,6 +12,10 @@ import {VASCULAR_SOURCE,VASCULAR_STRUCTURES} from './vascular-data.js';
 import {JOINTS_SOURCE,JOINTS_STRUCTURES} from './joints-data.js';
 
 export const INTEGRATION_SYSTEMS=Object.freeze([
+ {id:'bone',label:'Óseo',url:'https://cdn.jsdelivr.net/gh/SeemaBansal1/3d-human-body-anatomy@28912432581accd7a1c62129d55f0e9758221d48/web/public/models/skeleton.glb',
+  license:'CC BY-SA 4.0 (geometría derivada; revisar licencias de origen)',
+  attribution:'https://github.com/SeemaBansal1/3d-human-body-anatomy',
+  viewer:'./index.html',bytes:1195788,meshCount:null,kind:'huesos por malla',format:'glb'}, 
  {id:'muscle',label:'Muscular',url:DETAILED_MODEL.url,license:DETAILED_MODEL.license,
   attribution:DETAILED_MODEL.project,viewer:'./musculos.html',bytes:5700000,format:'meshopt',
   meshCount:362,kind:'músculos y tejido conectivo'},
@@ -47,6 +51,13 @@ const fromJointGroup={
  'leg-and-ankle':'lower','foot':'lower','bones':'spine'
 };
 export function normalizedRegion(system,raw){
+ if(system==='bone'){
+  if(raw==='skull')return 'head';
+  if(raw==='spine')return 'spine';
+  if(raw==='arm'||raw==='shoulder')return 'upper';
+  if(raw==='leg')return 'lower';
+  if(['head','neck','chest','pelvis','lower','upper'].includes(raw))return raw;
+ }
  if(system==='muscle'){
   if(raw==='head'||raw==='neck'||raw==='chest'||raw==='abdomen'||raw==='back'||raw==='upper'||raw==='pelvis'||raw==='lower')return raw;
  }
@@ -62,14 +73,14 @@ export function normalizedRegion(system,raw){
  if(system==='joint')return fromJointGroup[raw]||null;
  return null;
 }
-const asEntry=(system,id,name,originalName,region,kind,sourceId=null)=>Object.freeze({
- system,id,name,originalName,region,kind,sourceId:sourceId||id,
+const asEntry=(system,id,name,originalName,region,kind,sourceId=null,layer=null)=>Object.freeze({
+ system,id,name,originalName,region,kind,layer,sourceId:sourceId||id,
  lookup:(name+' '+originalName+' '+id).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
 });
 const muscleEntries=ECORCHE_LABELS.map((x,i)=>{
  const info=classifySourceMuscle(x.name,x);
  return asEntry('muscle','ecorche-'+i,info?.displayName||x.name,
-  x.name,normalizedRegion('muscle',info?.region),info?.kind||'muscle',x.name);
+  x.name,normalizedRegion('muscle',info?.region),info?.kind||'muscle',x.name,info?.layer||null);
 });
 const nerveEntries=NERVE_REGISTRY.map(x=>asEntry('nerve',x.id,x.name,x.sourceName,
  normalizedRegion('nerve',x.group),x.group,x.id));
