@@ -9,7 +9,7 @@ import {JOINTS_GROUPS,JOINTS_KINDS} from './joints-data.js';
 import {VASCULAR_REGIONS} from './vascular-data.js';
 import {NERVE_GROUPS} from './nerve-data.js';
 import {VISCERA_REGISTRY,identifyVisceraMesh} from './viscera-data.js';
-import {QUICK_REGIONS,JOINT_VIEWS,NERVE_CONTEXT,visibleByLayer,visibleInRegion,updateSelection,isContextBone} from './exploration-rules.js';
+import {QUICK_REGIONS,JOINT_VIEWS,NERVE_CONTEXT,visibleByLayer,visibleInRegion,updateSelection,isContextBone,regionsForSystem} from './exploration-rules.js';
 import {
  INTEGRATION_SYSTEMS,INTEGRATION_SYSTEM_MAP,INTEGRATION_REGIONS,
  INTEGRATION_ENTRIES,findStructures,MODEL_ALIGNMENT,normalizedRegion
@@ -41,7 +41,7 @@ const indexed=new Map(INTEGRATION_SYSTEMS.map(s=>[s.id,INTEGRATION_ENTRIES.filte
 const sourceIndex=new Map([...indexed].map(([id,entries])=>[id,new Map(entries.map(e=>[e.sourceId,e]))]));
 const state={
  system:'bone',token:0,models:new Map(),recent:[],selected:null,selectedIds:new Set(),
- anchorId:null,subregion:'all',group:'all',layer:'all',
+ anchorId:null,subregion:'all',group:'all',layer:'all',layerChoice:'layer:all',
  nerveBones:true,nerveDiscs:true,jointBoneOpacity:.4,
  hidden:new Set(),isolated:false,markMode:false,annotations:[],pointerDown:null,
  currentTarget:new THREE.Vector3(),radius:3,limit:60
@@ -129,11 +129,29 @@ function layerOptions(){
  system==='nerve'?NERVE_CONTEXT.map(x=>[x.id,x.label]):
  system==='joint'?JOINT_VIEWS.map(x=>[x.id,x.label]):
  [['all','Todos los órganos'],...new Set(activeEntries().map(x=>x.kind))].map(x=>Array.isArray(x)?x:[x,x]);
- for(const [id,label] of options){
-  const opt=document.createElement('option');opt.value=id;opt.textContent=label;
-  sel.appendChild(opt);
+ // Un único menú permite cambiar regiones o capas, conservando ambos filtros.
+ const regions=document.createElement('optgroup');regions.label='Regiones anatómicas';
+ for(const region of regionsForSystem(activeEntries(),system)){
+  const opt=document.createElement('option');
+  opt.value='region:'+region.id;opt.textContent=region.id==='all'?'Todo el cuerpo':region.label;
+  regions.appendChild(opt);
  }
- sel.value=state.layer;
+ sel.appendChild(regions);
+ const layers=document.createElement('optgroup');layers.label='Capas y tejidos';
+ for(const [id,label] of options){
+  const opt=document.createElement('option');opt.value='layer:'+id;opt.textContent=label;
+  layers.appendChild(opt);
+ }
+ sel.appendChild(layers);
+ if(!Array.from(sel.options).some(opt=>opt.value===state.layerChoice)){
+  state.layerChoice='layer:'+state.layer;
+ }
+ sel.value=state.layerChoice;
+ const regionName=QUICK_REGIONS.find(x=>x.id===state.group)?.label||
+  INTEGRATION_REGIONS.find(x=>x.id===state.group)?.label||state.group;
+ const layerName=options.find(([id])=>id===state.layer)?.[1]||'Todos los tejidos';
+ $('active-filter-status').textContent='Región: '+(state.group==='all'?'Todo el cuerpo':regionName)+
+  ' · Capa: '+layerName;
  $('nerve-context-controls').hidden=system!=='nerve';
  $('joint-context-controls').hidden=system!=='joint';
  $('nerve-show-bones').checked=state.nerveBones;
@@ -173,8 +191,9 @@ function renderSubregions(){
 }
 function pickRegion(region){
  state.group=region;state.subregion='all';state.limit=60;
+ state.layerChoice='region:'+region;
  clearSelection();
- renderRegions();renderSubregions();refreshMeshVisibility();renderCatalogue();renderRegionButtons();
+ renderRegions();layerOptions();renderSubregions();refreshMeshVisibility();renderCatalogue();renderRegionButtons();
  const model=activeModel();
  if(model&&region!=='all'){
   const meshes=[];
@@ -249,7 +268,7 @@ function selectEntry(entry,focus=false,event=null){
  if(!entry||entry.system!==state.system)return;
  state.hidden.delete(entry.id);
  if(!matchesFilters(entry)){
-  state.group='all';state.layer='all';state.subregion='all';
+  state.group='all';state.layer='all';state.subregion='all';state.layerChoice='layer:all';
   layerOptions();renderRegions();renderSubregions();renderRegionButtons();
  }
  const multi=$('multi-select-toggle').checked||event?.ctrlKey||event?.metaKey;
@@ -283,7 +302,7 @@ function hideSelected(){
  showStatus('Retiradas '+count+' estructuras. Recupera las piezas desde el catálogo o restablece la vista.');
 }
 function restore(){
- state.group='all';state.layer='all';state.subregion='all';state.hidden.clear();
+ state.group='all';state.layer='all';state.subregion='all';state.layerChoice='layer:all';state.hidden.clear();
  state.isolated=false;state.selected=null;state.selectedIds.clear();state.anchorId=null;
  $('structure-query').value='';state.limit=60;
  layerOptions();renderRegions();renderSubregions();renderRegionButtons();
@@ -447,7 +466,7 @@ function activateCached(system){
  const model=state.models.get(system);
  state.currentTarget.copy(model.center);state.radius=model.radius;
  state.hidden.clear();state.selected=null;state.selectedIds.clear();state.anchorId=null;
- state.isolated=false;state.group='all';state.subregion='all';state.layer='all';
+ state.isolated=false;state.group='all';state.subregion='all';state.layer='all';state.layerChoice='layer:all';
  layerOptions();renderRegions();renderSubregions();renderRegionButtons();
  refreshMeshVisibility();renderCatalogue();renderInfo();renderLandmarks();
  setView('front');
@@ -465,7 +484,7 @@ async function loadSystem(system){
  for(const [name,data] of state.models)data.root.visible=name===system;
  if(activateCached(system))return;
  state.selected=null;state.selectedIds.clear();state.anchorId=null;
- state.hidden.clear();state.isolated=false;state.group='all';state.subregion='all';state.layer='all';
+ state.hidden.clear();state.isolated=false;state.group='all';state.subregion='all';state.layer='all';state.layerChoice='layer:all';
  layerOptions();renderRegions();renderSubregions();renderRegionButtons();renderCatalogue();renderInfo();
  setLoading('Preparando sistema '+sourceLabel(system));
  const conf=INTEGRATION_SYSTEM_MAP[system];
@@ -661,7 +680,12 @@ for(const item of INTEGRATION_SYSTEMS){
 }
 $('active-system').addEventListener('change',e=>loadSystem(e.target.value));
 $('active-layer').addEventListener('change',e=>{
- state.layer=e.target.value;clearSelection();renderCatalogue();
+ const choice=e.target.value;
+ if(choice.startsWith('region:')){pickRegion(choice.slice(7));return}
+ if(!choice.startsWith('layer:'))return;
+ state.layer=choice.slice(6);
+ state.layerChoice=choice;
+ clearSelection();layerOptions();renderCatalogue();
 });
 $('structure-region').addEventListener('change',e=>pickRegion(e.target.value));
 $('structure-subregion').addEventListener('change',e=>{
