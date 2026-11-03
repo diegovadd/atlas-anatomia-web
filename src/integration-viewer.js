@@ -590,13 +590,16 @@ function renderInfo(){
  */
 function selectedStudyEntries(){
  const model=activeModel();
- return model?[...state.selectedIds].map(id=>model.byId.get(id)).filter(Boolean):[];
+ return model?[...state.selectedIds].filter(id=>(model.meshesById.get(id)||[]).length)
+  .map(id=>model.byId.get(id)).filter(Boolean):[];
 }
 function isFavoriteEntry(entry){
- const source=sources.get(entry.system);
- if(!source)return false;
- const key=favoriteKey(favoriteFromEntry(entry,source.url));
- return state.favorites.some(f=>favoriteKey(f)===key);
+ try{
+  const source=sources.get(entry.system);
+  if(!source)return false;
+  const key=favoriteKey(favoriteFromEntry(entry,source.url));
+  return state.favorites.some(f=>favoriteKey(f)===key);
+ }catch{return false}
 }
 function updateFavoriteActions(){
  const entries=selectedStudyEntries();
@@ -679,7 +682,9 @@ async function showFavorite(favorite,review=false){
 function renderStudy(){
  $('study-count').textContent=state.favorites.length+' / '+FAVORITES_MAX;
  $('study-start').disabled=!state.favorites.length;
+ $('study-start').hidden=state.review.active;
  const host=$('study-list');host.replaceChildren();
+ host.hidden=state.review.active;
  if(!state.favorites.length){
   const p=document.createElement('p');p.className='drawer-footnote';
   p.textContent='Todavía no has guardado estructuras. Selecciónalas en el visor y pulsa ☆ Guardar.';
