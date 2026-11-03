@@ -27,6 +27,7 @@ a{color:inherit}
 .bubble-rail{position:absolute;z-index:5;left:18px;top:50%;transform:translateY(-50%);display:grid;gap:4px;padding:9px 7px;width:82px;border:1px solid #38545a;border-radius:17px;background:#0a1721d9;backdrop-filter:blur(14px);box-shadow:0 20px 40px #0007}
 .bubble-rail button{border:1px solid transparent;border-radius:10px;background:transparent;color:#d8e9e3;min-height:65px;display:grid;place-content:center;justify-items:center;gap:3px;font-size:10px}
 .bubble-rail button span{font-size:24px;line-height:1}
+.bubble-rail{max-height:calc(100% - 90px);overflow-y:auto}
 .bubble-rail button:hover:not(:disabled){background:#2a4b44;border-color:#70a18e;color:#fff}
 .atlas-top-panel{position:absolute;z-index:4;left:124px;top:20px;display:flex;align-items:end;gap:13px;padding:13px 15px;border:1px solid #3e5b5b;border-radius:13px;background:#0b1a23df;box-shadow:0 12px 35px #0005;backdrop-filter:blur(10px)}
 .atlas-top-panel>div{display:grid;gap:7px;min-width:0}
@@ -192,4 +193,35 @@ dialog button{padding:10px 14px;border:1px solid #92bda7;border-radius:8px;backg
  .multi-toggle{padding:7px 6px;font-size:9px}
  .multi-toggle input{width:14px;height:14px}
  .selection-count{font-size:10px}
+}
+
+/* LAB 07 · favoritos y repaso sin sacar el visor de una sola pantalla */
+#selection-favorite,#info-favorite,#study-start,.study-controls button,.study-item button{
+ border:1px solid #698f7a;background:#26443c;border-radius:8px;
+ color:#e7f6e9;padding:9px 11px;font-size:11px;
+}
+#selection-favorite:hover:not(:disabled),#info-favorite:hover:not(:disabled),
+#study-start:hover:not(:disabled),.study-controls button:hover:not(:disabled),
+.study-item button:hover:not(:disabled){background:#346653}
+#info-favorite{width:100%;margin-top:8px}
+#study-start{font-size:13px;font-weight:600;min-height:42px}
+.study-list{display:grid;gap:8px;align-content:start}
+.study-item{
+ display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;
+ align-items:center;padding:10px;border-radius:11px;
+ border:1px solid #3d625b;background:#142b30;
+}
+.study-item-text{display:grid;gap:4px;min-width:0}
+.study-item-text strong{font-size:12px;font-weight:600;overflow-wrap:anywhere}
+.study-item-text small{color:#b6cfc1;font-size:10px}
+.study-item button{padding:7px 8px;font-size:10px}
+.study-review{display:grid;gap:11px;padding:15px;border-radius:12px;background:#18332f;border:1px solid #678c79}
+.study-review>strong{font:500 20px/1.35 'IBM Plex Serif',Georgia,serif}
+.study-review #study-answer{font-weight:600;font-size:18px;color:#eef8dd;padding:11px;border:1px solid #829f85;border-radius:8px;background:#28423a}
+.study-controls{display:flex;flex-wrap:wrap;gap:6px}
+.study-controls button{flex:1;min-width:110px}
+@media(max-width:750px){
+ .bubble-rail{max-height:none;overflow-y:hidden}
+ .study-item{grid-template-columns:minmax(0,1fr) auto;gap:6px}
+ .study-item button:last-child{grid-column:2}
 }
