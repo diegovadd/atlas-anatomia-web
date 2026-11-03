@@ -9,6 +9,10 @@ import {JOINTS_GROUPS,JOINTS_KINDS} from './joints-data.js';
 import {VASCULAR_REGIONS} from './vascular-data.js';
 import {NERVE_GROUPS} from './nerve-data.js';
 import {VISCERA_REGISTRY,identifyVisceraMesh} from './viscera-data.js';
+import {
+ FAVORITES_STORAGE_KEY,FAVORITES_MAX,parseFavorites,serializeFavorites,
+ favoriteFromEntry,favoriteKey,toggleFavorite,resolveFavorite,wrapReviewIndex
+} from './study-favorites.js';
 import {QUICK_REGIONS,JOINT_VIEWS,NERVE_CONTEXT,visibleByLayer,visibleInRegion,updateSelection,isContextBone,regionsForSystem} from './exploration-rules.js';
 import {
  INTEGRATION_SYSTEMS,INTEGRATION_SYSTEM_MAP,INTEGRATION_REGIONS,
@@ -39,11 +43,16 @@ const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
 const sources=new Map(INTEGRATION_SYSTEMS.map(s=>[s.id,s]));
 const indexed=new Map(INTEGRATION_SYSTEMS.map(s=>[s.id,INTEGRATION_ENTRIES.filter(e=>e.system===s.id)]));
 const sourceIndex=new Map([...indexed].map(([id,entries])=>[id,new Map(entries.map(e=>[e.sourceId,e]))]));
+function loadStudyFavorites(){
+ try{return parseFavorites(window.localStorage.getItem(FAVORITES_STORAGE_KEY),sources)}
+ catch{return []}
+}
 const state={
  system:'bone',token:0,models:new Map(),recent:[],selected:null,selectedIds:new Set(),
  anchorId:null,subregion:'all',group:'all',layer:'all',layerChoice:'layer:all',
  nerveBones:true,nerveDiscs:true,jointBoneOpacity:.4,
  hidden:new Set(),isolated:false,markMode:false,annotations:[],pointerDown:null,
+ favorites:loadStudyFavorites(),review:{active:false,revealed:false,index:0,ticket:0},
  currentTarget:new THREE.Vector3(),radius:3,limit:60
 };
 const MAX_CACHED_MODELS=2;
@@ -260,11 +269,15 @@ function refreshMeshVisibility(){
  for(const id of ['bubble-isolate','selection-focus','selection-hide','selection-isolate'])$(id).disabled=!state.selectedIds.size;
  $('selection-isolate').textContent=state.isolated?'Mostrar entorno':'Aislar';
  if(state.selected){
-  $('atlas-selection-name').textContent=state.selectedIds.size>1?state.selectedIds.size+' estructuras':state.selected.name;
+  $('atlas-selection-name').textContent=state.review.active&&!state.review.revealed?
+   'Identifica la estructura resaltada':
+   state.selectedIds.size>1?state.selectedIds.size+' estructuras':state.selected.name;
   $('atlas-selection-system').textContent=sourceLabel(state.system).toUpperCase();
  }
+ updateFavoriteActions();
 }
 function selectEntry(entry,focus=false,event=null){
+ if(state.review.active)stopReview();
  if(!entry||entry.system!==state.system)return;
  state.hidden.delete(entry.id);
  if(!matchesFilters(entry)){
@@ -287,6 +300,7 @@ function selectEntry(entry,focus=false,event=null){
  else closeDrawers();
 }
 function clearSelection(){
+ if(state.review.active)stopReview();
  state.selected=null;state.selectedIds.clear();state.anchorId=null;state.isolated=false;
  refreshMeshVisibility();renderInfo();renderCatalogue();
 }
@@ -302,6 +316,7 @@ function hideSelected(){
  showStatus('Retiradas '+count+' estructuras. Recupera las piezas desde el catálogo o restablece la vista.');
 }
 function restore(){
+ if(state.review.active)stopReview();
  state.group='all';state.layer='all';state.subregion='all';state.layerChoice='layer:all';state.hidden.clear();
  state.isolated=false;state.selected=null;state.selectedIds.clear();state.anchorId=null;
  $('structure-query').value='';state.limit=60;
@@ -546,6 +561,7 @@ function renderInfo(){
  const entry=state.selected;
  $('empty-info').hidden=!!entry;
  $('structure-info').hidden=!entry;
+ updateFavoriteActions();
  const selectedHost=$('info-selected-list');selectedHost.replaceChildren();
  selectedHost.hidden=state.selectedIds.size<2;
  if(!entry)return;
@@ -569,6 +585,128 @@ function renderInfo(){
   }
  }
 }
+/** LAB 07. Los favoritos referencian mallas existentes: ninguna ficha está
+ * cotejada aquí y el ejercicio no produce calificaciones clínicas.
+ */
+function selectedStudyEntries(){
+ const model=activeModel();
+ return model?[...state.selectedIds].map(id=>model.byId.get(id)).filter(Boolean):[];
+}
+function isFavoriteEntry(entry){
+ const source=sources.get(entry.system);
+ if(!source)return false;
+ const key=favoriteKey(favoriteFromEntry(entry,source.url));
+ return state.favorites.some(f=>favoriteKey(f)===key);
+}
+function updateFavoriteActions(){
+ const entries=selectedStudyEntries();
+ const allSaved=entries.length>0&&entries.every(isFavoriteEntry);
+ for(const id of ['selection-favorite','info-favorite']){
+  const button=$(id);if(!button)continue;
+  button.disabled=!entries.length;
+  button.textContent=!entries.length?'☆ Guardar':
+   allSaved?'★ Quitar de estudio':
+   entries.length>1?'☆ Guardar selección ('+entries.length+')':'☆ Guardar en estudio';
+ }
+}
+function persistStudy(){
+ try{
+  window.localStorage.setItem(FAVORITES_STORAGE_KEY,serializeFavorites(state.favorites));
+  $('study-feedback').textContent='Favoritos guardados en este navegador.';
+ }catch{
+  $('study-feedback').textContent='Almacenamiento local no disponible: favoritos solo en esta sesión.';
+ }
+}
+function toggleSelectedFavorites(){
+ const entries=selectedStudyEntries();
+ if(!entries.length)return;
+ const allSaved=entries.every(isFavoriteEntry);
+ if(!allSaved&&state.favorites.length>=FAVORITES_MAX){
+  $('study-feedback').textContent='Límite de '+FAVORITES_MAX+' estructuras. Elimina una antes de guardar más.';
+  openDrawer('drawer-study');return;
+ }
+ for(const entry of entries){
+  const favorite=favoriteFromEntry(entry,sources.get(entry.system).url);
+  const found=state.favorites.some(f=>favoriteKey(f)===favoriteKey(favorite));
+  if((allSaved&&found)||(!allSaved&&!found))
+   state.favorites=toggleFavorite(state.favorites,favorite);
+ }
+ persistStudy();updateFavoriteActions();renderStudy();
+}
+function stopReview(){
+ if(!state.review.active)return;
+ state.review.active=false;state.review.revealed=false;state.review.ticket++;
+ refreshMeshVisibility();renderStudy();
+}
+function removeFavorite(favorite){
+ const key=favoriteKey(favorite);
+ state.favorites=state.favorites.filter(item=>favoriteKey(item)!==key);
+ if(state.review.active)stopReview();
+ persistStudy();updateFavoriteActions();renderStudy();
+}
+async function showFavorite(favorite,review=false){
+ const request=++state.review.ticket;
+ const system=favorite.system;
+ try{
+  if(state.system!==system||!activeModel())await loadSystem(system);
+  if(request!==state.review.ticket||state.system!==system)return;
+  const model=activeModel();
+  const entry=resolveFavorite(favorite,model);
+  if(!entry){
+   if(review)stopReview();
+   $('study-feedback').textContent='No se encontró esta pieza exacta en el modelo actual. Conservamos el favorito para revisión manual.';
+   openDrawer('drawer-study');return;
+  }
+  if(review){
+   state.group='all';state.layer='all';state.subregion='all';state.layerChoice='layer:all';
+   layerOptions();renderRegions();renderSubregions();renderRegionButtons();
+   state.hidden.delete(entry.id);state.isolated=false;
+   state.selectedIds=new Set([entry.id]);state.selected=entry;state.anchorId=entry.id;
+   state.review.revealed=false;
+   refreshMeshVisibility();renderInfo();renderCatalogue();focusEntry(entry);
+   openDrawer('drawer-study');renderStudy();
+  }else{
+   stopReview();state.selectedIds.clear();
+   selectEntry(entry,true);
+  }
+ }catch(error){
+  if(request!==state.review.ticket)return;
+  if(review)stopReview();
+  $('study-feedback').textContent='No se pudo mostrar la estructura. Comprueba la conexión con el modelo 3D.';
+  openDrawer('drawer-study');
+ }
+}
+function renderStudy(){
+ $('study-count').textContent=state.favorites.length+' / '+FAVORITES_MAX;
+ $('study-start').disabled=!state.favorites.length;
+ const host=$('study-list');host.replaceChildren();
+ if(!state.favorites.length){
+  const p=document.createElement('p');p.className='drawer-footnote';
+  p.textContent='Todavía no has guardado estructuras. Selecciónalas en el visor y pulsa ☆ Guardar.';
+  host.appendChild(p);
+ }
+ for(const fav of state.favorites){
+  const row=document.createElement('div');row.className='study-item';
+  const detail=document.createElement('div');detail.className='study-item-text';
+  const name=document.createElement('strong');name.textContent=fav.name;
+  const source=document.createElement('small');source.textContent=sourceLabel(fav.system);
+  detail.append(name,source);
+  const view=document.createElement('button');view.type='button';view.textContent='Ver 3D';
+  view.addEventListener('click',()=>showFavorite(fav,false));
+  const remove=document.createElement('button');remove.type='button';remove.textContent='Quitar';
+  remove.setAttribute('aria-label','Quitar '+fav.name+' de estudio');
+  remove.addEventListener('click',()=>removeFavorite(fav));
+  row.append(detail,view,remove);host.appendChild(row);
+ }
+ $('study-review').hidden=!state.review.active;
+ if(!state.review.active||!state.favorites.length)return;
+ state.review.index=wrapReviewIndex(state.review.index,state.favorites.length);
+ const card=state.favorites[state.review.index];
+ $('study-review-count').textContent='Estructura '+(state.review.index+1)+' de '+state.favorites.length;
+ $('study-answer').hidden=!state.review.revealed;
+ $('study-answer').textContent=state.review.revealed?card.name:'';
+ $('study-reveal').disabled=state.review.revealed;
+}
 function renderSystemMenu(){
  const host=$('system-list');host.replaceChildren();
  for(const s of INTEGRATION_SYSTEMS){
@@ -583,7 +721,7 @@ function renderSystemMenu(){
  }
 }
 function closeDrawers(){
- for(const id of ['drawer-systems','drawer-catalogue','drawer-info','drawer-landmarks'])$(id).hidden=true;
+ for(const id of ['drawer-systems','drawer-catalogue','drawer-info','drawer-study','drawer-landmarks'])$(id).hidden=true;
  $('atlas-backdrop').hidden=true;
 }
 function openDrawer(id,passive=false){
@@ -601,6 +739,7 @@ function openDrawer(id,passive=false){
  $('drawer-info').classList.toggle('auto-info',id==='drawer-info');
  if(id==='drawer-systems')renderSystemMenu();
  if(id==='drawer-catalogue')$('structure-query').focus();
+ if(id==='drawer-study')renderStudy();
 }
 function placeLandmark(hit,entry){
  if(state.annotations.length>=300){showStatus('Límite de 300 puntos por sesión. Exporta o borra algunos.');return}
@@ -678,7 +817,7 @@ for(const item of INTEGRATION_SYSTEMS){
  const option=document.createElement('option');option.value=item.id;option.textContent=item.label;
  $('active-system').appendChild(option);
 }
-$('active-system').addEventListener('change',e=>loadSystem(e.target.value));
+$('active-system').addEventListener('change',e=>{stopReview();loadSystem(e.target.value)});
 $('active-layer').addEventListener('change',e=>{
  const choice=e.target.value;
  if(choice.startsWith('region:')){pickRegion(choice.slice(7));return}
@@ -706,6 +845,7 @@ $('bubble-systems').addEventListener('click',()=>openDrawer('drawer-systems'));
 $('intro-open-systems').addEventListener('click',()=>openDrawer('drawer-systems'));
 $('bubble-list').addEventListener('click',()=>openDrawer('drawer-catalogue'));
 $('bubble-info').addEventListener('click',()=>openDrawer('drawer-info'));
+$('bubble-study').addEventListener('click',()=>openDrawer('drawer-study'));
 $('selection-info').addEventListener('click',()=>openDrawer('drawer-info'));
 $('bubble-mark').addEventListener('click',()=>openDrawer('drawer-landmarks'));
 $('bubble-isolate').addEventListener('click',isolate);
@@ -713,6 +853,23 @@ $('selection-isolate').addEventListener('click',isolate);
 $('selection-hide').addEventListener('click',hideSelected);
 $('selection-focus').addEventListener('click',()=>focusEntry(state.selected));
 $('info-focus').addEventListener('click',()=>focusEntry(state.selected));
+$('selection-favorite').addEventListener('click',toggleSelectedFavorites);
+$('info-favorite').addEventListener('click',toggleSelectedFavorites);
+$('study-start').addEventListener('click',()=>{
+ if(!state.favorites.length)return;
+ state.review.active=true;state.review.revealed=false;state.review.index=0;
+ showFavorite(state.favorites[0],true);
+});
+$('study-reveal').addEventListener('click',()=>{
+ if(!state.review.active)return;
+ state.review.revealed=true;refreshMeshVisibility();renderStudy();
+});
+$('study-next').addEventListener('click',()=>{
+ if(!state.review.active||!state.favorites.length)return;
+ state.review.index=wrapReviewIndex(state.review.index+1,state.favorites.length);
+ state.review.revealed=false;showFavorite(state.favorites[state.review.index],true);
+});
+$('study-stop').addEventListener('click',()=>{stopReview();openDrawer('drawer-study')});
 $('bubble-reset').addEventListener('click',restore);
 $('restore-visible').addEventListener('click',restore);
 for(const button of document.querySelectorAll('[data-view]'))
@@ -763,5 +920,5 @@ window.addEventListener('keydown',e=>{
  }
  closeDrawers();
 });
-renderRegions();layerOptions();renderSubregions();renderRegionButtons();renderCatalogue();renderLandmarks();renderInfo();
+renderRegions();layerOptions();renderSubregions();renderRegionButtons();renderCatalogue();renderLandmarks();renderInfo();renderStudy();
 loadSystem('bone');
