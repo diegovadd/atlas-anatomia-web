@@ -64,7 +64,9 @@ export function toggleFavorite(favorites,favorite){
 /** Rechazar coincidencias dudosas; no reasignar favoritos tras cambios de mallas. */
 export function resolveFavorite(favorite,model){
  const item=model?.byId?.get(favorite?.id);
- if(!item||item.system!==favorite.system||
+ const meshes=model?.meshesById?.get(favorite?.id);
+ if(!Array.isArray(meshes)||meshes.length===0||
+  !item||item.system!==favorite.system||
   item.sourceId!==favorite.sourceId||
   item.originalName!==favorite.originalName)return null;
  return item;
