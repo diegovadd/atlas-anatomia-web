@@ -17,6 +17,7 @@ import {
  STUDY_PROGRESS_KEY,parseProgress,serializeProgress,
  recordResult,practiceFavorites,pruneProgress,progressFor,progressSummary
 } from './study-progress.js';
+import {createFeedback,feedbackText,feedbackIssueUrl} from './community-feedback.js';
 import {QUICK_REGIONS,JOINT_VIEWS,NERVE_CONTEXT,visibleByLayer,visibleInRegion,updateSelection,isContextBone,regionsForSystem} from './exploration-rules.js';
 import {
  INTEGRATION_SYSTEMS,INTEGRATION_SYSTEM_MAP,INTEGRATION_REGIONS,
@@ -782,8 +783,49 @@ function renderSystemMenu(){
   host.appendChild(btn);
  }
 }
+/** Un informe de prueba es un borrador local, no una revisión médica.
+ * GitHub solo recibe el contenido cuando el evaluador confirma su publicación.
+ */
+let feedbackContext=null;
+function openFeedback(){
+ const reviewing=state.review.active;
+ if(reviewing)stopReview();
+ feedbackContext=!reviewing&&state.selectedIds.size===1?state.selected:null;
+ const context=feedbackContext;
+ $('feedback-context').textContent=context?
+  'Vinculado a: '+context.name+' · '+sourceLabel(context.system)+
+   ' · nombre de origen: '+context.originalName:
+  'Observación general, sin estructura vinculada.';
+ $('feedback-category').value=context?'nomenclature':'navigation';
+ $('feedback-status').textContent='El informe solo saldrá de tu dispositivo cuando decidas compartirlo.';
+ openDrawer('drawer-feedback');
+}
+function readFeedback(){
+ try{
+  const selected=feedbackContext;
+  const source=selected?INTEGRATION_SYSTEM_MAP[selected.system]:null;
+  const report=createFeedback({
+   category:$('feedback-category').value,
+   device:$('feedback-device').value,
+   observation:$('feedback-observation').value,
+   reference:$('feedback-reference').value,
+   structure:selected&&source?{
+    system:selected.system,id:selected.id,name:selected.name,
+    originalName:selected.originalName,sourceUrl:source.url
+   }:null
+  });
+  return report;
+ }catch(err){
+  $('feedback-status').textContent=err.message;
+  $('feedback-observation').focus();
+  return null;
+ }
+}
+function copyPublicAtlasLink(){
+ return new URL('./atlas-evaluacion.html',window.location.href).href;
+}
 function closeDrawers(){
- for(const id of ['drawer-systems','drawer-catalogue','drawer-info','drawer-study','drawer-landmarks'])$(id).hidden=true;
+ for(const id of ['drawer-systems','drawer-catalogue','drawer-info','drawer-study','drawer-landmarks','drawer-feedback'])$(id).hidden=true;
  $('atlas-backdrop').hidden=true;
 }
 function openDrawer(id,passive=false){
@@ -906,6 +948,9 @@ $('structure-query').addEventListener('input',()=>{state.limit=60;renderCatalogu
 $('load-more-structures').addEventListener('click',()=>{state.limit+=60;renderCatalogue()});
 $('bubble-systems').addEventListener('click',()=>openDrawer('drawer-systems'));
 $('intro-open-systems').addEventListener('click',()=>openDrawer('drawer-systems'));
+$('intro-open-feedback').addEventListener('click',openFeedback);
+$('header-feedback').addEventListener('click',openFeedback);
+$('info-feedback').addEventListener('click',openFeedback);
 $('bubble-list').addEventListener('click',()=>openDrawer('drawer-catalogue'));
 $('bubble-info').addEventListener('click',()=>openDrawer('drawer-info'));
 $('bubble-study').addEventListener('click',()=>openDrawer('drawer-study'));
@@ -937,6 +982,38 @@ $('study-next').addEventListener('click',()=>{
  showFavorite(state.review.queue[state.review.index],true);
 });
 $('study-stop').addEventListener('click',()=>{stopReview();openDrawer('drawer-study')});
+$('feedback-copy').addEventListener('click',async()=>{
+ const report=readFeedback();if(!report)return;
+ try{
+  await navigator.clipboard.writeText(feedbackText(report));
+  $('feedback-status').textContent='Informe copiado. Compártelo por el medio que prefieras.';
+ }catch{
+  $('feedback-status').textContent='No se pudo copiar automáticamente. Utiliza «Descargar informe».';
+ }
+});
+$('feedback-download').addEventListener('click',()=>{
+ const report=readFeedback();if(!report)return;
+ const blob=new Blob([feedbackText(report)],{type:'text/plain;charset=utf-8'});
+ const url=URL.createObjectURL(blob);
+ const anchor=document.createElement('a');anchor.href=url;anchor.download='atlas-informe-de-prueba.txt';
+ document.body.appendChild(anchor);anchor.click();anchor.remove();
+ window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+ $('feedback-status').textContent='Informe descargado. Debes compartirlo manualmente con la persona que te invitó.';
+});
+$('feedback-github').addEventListener('click',()=>{
+ const report=readFeedback();if(!report)return;
+ window.open(feedbackIssueUrl(report),'_blank','noopener,noreferrer');
+ $('feedback-status').textContent='Se abrió GitHub. Inicia sesión y confirma «Submit new issue» para enviar tu observación públicamente.';
+});
+$('feedback-copy-link').addEventListener('click',async()=>{
+ try{
+  await navigator.clipboard.writeText(copyPublicAtlasLink());
+  $('feedback-status').textContent='Enlace de prueba pública copiado.';
+ }catch{
+  $('feedback-status').textContent='Copia esta dirección desde la barra del navegador: '+copyPublicAtlasLink();
+ }
+});
+$('feedback-device').value=window.matchMedia('(max-width: 750px)').matches?'mobile':'desktop';
 $('bubble-reset').addEventListener('click',restore);
 $('restore-visible').addEventListener('click',restore);
 for(const button of document.querySelectorAll('[data-view]'))
