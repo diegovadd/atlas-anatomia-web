@@ -7,14 +7,14 @@
  <title>ATLAS · Visor anatómico unificado · Laboratorio 06</title>
  <link rel="preconnect" href="https://fonts.googleapis.com">
  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600&display=swap" rel="stylesheet">
- <link rel="stylesheet" href="./src/integration-styles.css?v=atlas-20261103-evaluacion09">
+ <link rel="stylesheet" href="./src/integration-styles.css?v=atlas-20261103-ux10">
  <script type="importmap">
  {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
  </script>
  <style>/* Resguardo frente a barras regionales antiguas */
   #region-shortcuts,.atlas-region-shortcuts{display:none!important}
  </style>
- <script type="module" src="./src/integration-viewer.js?v=atlas-20261103-evaluacion09"></script>
+ <script type="module" src="./src/integration-viewer.js?v=atlas-20261103-ux10"></script>
 </head>
 <body>
 <div class="atlas-unified">
@@ -28,10 +28,14 @@
    <button type="button" id="bubble-systems" title="Cambiar sistema anatómico"><span aria-hidden="true">◉</span>Sistemas</button>
    <button type="button" id="bubble-list" title="Buscar y seleccionar estructuras"><span aria-hidden="true">☷</span>Regiones</button>
    <button type="button" id="bubble-info" title="Ficha de estructura" aria-label="Abrir ficha anatómica"><span aria-hidden="true">ⓘ</span>Ficha</button>
+   <button type="button" id="bubble-more" title="Mostrar herramientas adicionales" aria-controls="bubble-extra-tools" aria-expanded="false"><span aria-hidden="true">···</span>Más</button>
+   <div id="bubble-extra-tools" class="bubble-extra-tools" hidden>
    <button type="button" id="bubble-study" title="Favoritos y repaso de identificación"><span aria-hidden="true">☆</span>Estudio</button>
    <button type="button" id="bubble-mark" title="Marcar puntos anatómicos"><span aria-hidden="true">⌖</span>Puntos</button>
    <button type="button" id="bubble-isolate" disabled title="Aislar estructura seleccionada"><span aria-hidden="true">◎</span>Aislar</button>
    <button type="button" id="bubble-reset" title="Restablecer la vista"><span aria-hidden="true">↺</span>Reiniciar</button>
+    <button type="button" id="bubble-tour" title="Guía para comenzar a usar Atlas"><span aria-hidden="true">?</span>Ayuda</button>
+   </div>
   </nav>
   <section class="atlas-top-panel" aria-label="Sistema y capas">
    <div>
@@ -53,6 +57,7 @@
    <p>Selecciona un sistema, filtra por región en «Capas y tejidos» y explora cada pieza en 3D. Si detectas una etiqueta dudosa o una dificultad, cuéntanos.</p>
    <button type="button" id="intro-open-systems">Comenzar a explorar</button>
     <button type="button" id="intro-open-feedback" class="intro-secondary">Cómo evaluar el atlas</button>
+    <button type="button" id="intro-tour" class="intro-secondary">Guía de navegación</button>
    <small>Los modelos todavía no están registrados espacialmente. Se muestra uno por vez hasta verificar sus referencias anatómicas.</small>
   </section>
   <div class="atlas-progress" id="atlas-progress" aria-live="polite" role="status">Preparando el primer modelo…</div>
@@ -107,6 +112,11 @@
    <select id="structure-region"></select>
    <label for="structure-subregion">Subgrupo dentro de la región</label>
    <select id="structure-subregion"><option value="all">Todos los subgrupos</option></select>
+    <div class="region-path" aria-label="Ruta de exploración">
+     <span class="eyebrow">EXPLORANDO</span>
+     <p id="region-path" aria-live="polite">Sistema → Todo el cuerpo → Todos los subgrupos</p>
+     <button type="button" id="region-home">Volver a todo el cuerpo</button>
+    </div>
    <section class="contextual-controls">
     <div id="nerve-context-controls" hidden>
      <strong>Columna vertebral de referencia</strong>
@@ -132,16 +142,29 @@
   <div class="drawer-content">
    <p id="empty-info">Selecciona una estructura del modelo 3D o del catálogo.</p>
    <section id="structure-info" hidden>
+     <span class="info-review-status" id="info-review-status" aria-live="polite">Pendiente de cotejo</span>
     <h3 id="info-name"></h3>
+     <p class="info-location-path" id="info-location-path">Ubicación por catalogar</p>
     <div id="info-selected-list" class="info-selected-list" hidden aria-label="Selección múltiple"></div>
     <dl class="info-grid">
      <div><dt>Sistema</dt><dd id="info-system"></dd></div>
      <div><dt>Nombre original</dt><dd id="info-original"></dd></div>
      <div><dt>Tipo o capa</dt><dd id="info-kind"></dd></div>
      <div><dt>Región</dt><dd id="info-region"></dd></div>
+      <div><dt>Subgrupo</dt><dd id="info-subgroup"></dd></div>
+      <div><dt>Identificador del modelo</dt><dd id="info-model-id"></dd></div>
     </dl>
+    <section class="info-academic" aria-label="Contenido académico sujeto a revisión">
+     <h4>Descripción</h4><p id="info-description">Pendiente de cotejo bibliográfico.</p>
+     <h4>Relaciones anatómicas</h4><p id="info-relationships">Pendientes de cotejo bibliográfico.</p>
+     <h4>Función o acción</h4><p id="info-function-text">Pendiente cuando corresponda.</p>
+     <p class="info-bibliography" id="info-bibliography">Moore y Rouvière; pendiente de revisión.</p>
+    </section>
     <p class="draft-note" id="info-source-warning">Identificación provisional de origen. Las relaciones, inserciones e inervación se verificarán con bibliografía académica antes de marcarse como revisadas.</p>
-    <button type="button" id="info-focus">Enfocar estructura</button>
+    <div class="info-view-tools">
+     <button type="button" id="info-focus">Centrar en 3D</button>
+     <button type="button" id="info-isolate">Aislar estructura</button>
+    </div>
     <button type="button" id="info-favorite">☆ Guardar en estudio</button>
     <button type="button" id="info-feedback">Reportar esta estructura</button>
    </section>
@@ -217,12 +240,13 @@
    <input id="feedback-reference" maxlength="350" placeholder="Libro, edición, sección o enlace de evidencia">
    <p id="feedback-status" class="drawer-footnote" role="status" aria-live="polite">El informe solo saldrá de tu dispositivo cuando decidas compartirlo.</p>
    <div class="feedback-actions">
+    <button type="button" id="feedback-share">Compartir sin GitHub</button>
     <button type="button" id="feedback-github">Abrir reporte en GitHub</button>
     <button type="button" id="feedback-copy">Copiar informe</button>
     <button type="button" id="feedback-download">Descargar informe</button>
    </div>
    <button type="button" id="feedback-copy-link" class="feedback-invite">Copiar enlace para invitar a otra persona</button>
-   <p class="drawer-footnote">GitHub requiere una cuenta y los reportes publicados allí serán visibles al público. Si no tienes cuenta, copia o descarga el informe y compártelo con quien te invitó. No se envía automáticamente, ni debes incluir información personal o clínica.</p>
+   <p class="drawer-footnote">«Compartir sin GitHub» abre las aplicaciones disponibles en tu dispositivo. Si no hay opción de compartir, podrás copiar o descargar el informe para enviarlo manualmente. Atlas no cuenta todavía con un buzón anónimo centralizado. GitHub requiere cuenta y publica el reporte; evita incluir datos personales o clínicos.</p>
   </div>
  </aside>
  <aside class="atlas-drawer right" id="drawer-landmarks" hidden aria-label="Registro de puntos anatómicos">
@@ -246,6 +270,20 @@
    <p class="drawer-footnote">Los puntos permanecen en esta sesión hasta exportarlos. No hay almacenamiento automático, diagnóstico ni cálculo de superposición. Los archivos importados se validan y nunca se ejecutan como código.</p>
   </div>
  </aside>
+ <dialog id="atlas-tour" class="atlas-tour" aria-labelledby="tour-title">
+  <div class="atlas-tour-content">
+   <span class="eyebrow">GUÍA OPCIONAL · ATLAS 3D</span>
+   <span id="tour-step" class="tour-progress" aria-live="polite">Paso 1 de 4</span>
+   <h2 id="tour-title">Explora por sistemas</h2>
+   <p id="tour-description">Empieza por elegir un sistema anatómico.</p>
+   <p class="tour-footnote">Puedes abrir esta guía de nuevo desde Más → Ayuda.</p>
+   <div class="tour-actions">
+    <button type="button" id="tour-skip">Omitir</button>
+    <button type="button" id="tour-prev" disabled>Anterior</button>
+    <button type="button" id="tour-next">Siguiente</button>
+   </div>
+  </div>
+ </dialog>
  <dialog id="alignment-dialog" aria-labelledby="alignment-heading">
   <h2 id="alignment-heading">Registro anatómico antes de unir modelos</h2>
   <p>Los seis modelos provienen de fuentes diferentes. Un punto con el mismo nombre puede tener valores numéricos distintos porque cambian escala, ejes, origen y simplificación geométrica.</p>
