@@ -7,20 +7,20 @@
  <title>ATLAS · Repaso 3D y progreso · Laboratorio 07</title>
  <link rel="preconnect" href="https://fonts.googleapis.com">
  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600&display=swap" rel="stylesheet">
- <link rel="stylesheet" href="./src/integration-styles.css?v=atlas-20261103-practica08">
+ <link rel="stylesheet" href="./src/integration-styles.css?v=atlas-20261103-evaluacion09">
  <script type="importmap">
  {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
  </script>
  <style>/* Resguardo frente a barras regionales antiguas */
   #region-shortcuts,.atlas-region-shortcuts{display:none!important}
  </style>
- <script type="module" src="./src/integration-viewer.js?v=atlas-20261103-practica08"></script>
+ <script type="module" src="./src/integration-viewer.js?v=atlas-20261103-evaluacion09"></script>
 </head>
 <body>
 <div class="atlas-unified">
  <header class="atlas-header">
-  <div class="atlas-brand"><a href="./preview.html">ATLAS<span>.</span></a><span class="divider-sign">/</span><strong>Exploración anatómica</strong><span class="lab-tag">LAB · 06</span></div>
-  <nav aria-label="Navegación"><a href="./preview.html">Sistemas</a><a href="./index.html">Cráneo detallado</a></nav>
+  <div class="atlas-brand"><a href="./preview.html">ATLAS<span>.</span></a><span class="divider-sign">/</span><strong>Exploración anatómica</strong><span class="lab-tag">LAB · PRUEBA PÚBLICA</span></div>
+  <nav aria-label="Navegación"><a href="./preview.html">Sistemas</a><a href="./index.html">Cráneo detallado</a><button type="button" id="header-feedback" aria-label="Evaluar Atlas y enviar una observación">Evaluar Atlas</button></nav>
  </header>
  <main class="atlas-viewport" id="atlas-viewport">
   <canvas id="atlas-one-canvas" aria-label="Visor 3D único para todos los sistemas anatómicos"></canvas>
@@ -48,10 +48,11 @@
    <div class="model-meta"><span class="eyebrow">MODELO EN PANTALLA</span><strong id="active-model-caption">Una fuente · Sin superposición</strong></div>
   </section>
   <section class="atlas-intro" id="atlas-intro">
-   <span class="eyebrow">ATLAS · MODO ENFOQUE</span>
-   <h1>Todos los sistemas, <em>un solo visor.</em></h1>
-   <p>Explora huesos, músculos, nervios, vasos, articulaciones y vísceras desde esta misma escena. Selecciona un sistema en la parte superior; después busca, aísla o marca estructuras.</p>
-   <button type="button" id="intro-open-systems">Explorar sistemas</button>
+   <span class="eyebrow">ATLAS · EXPLORACIÓN Y PRUEBA PÚBLICA</span>
+   <h1>La anatomía, <em>estructura por estructura.</em></h1>
+   <p>Selecciona un sistema, filtra por región en «Capas y tejidos» y explora cada pieza en 3D. Si detectas una etiqueta dudosa o una dificultad, cuéntanos.</p>
+   <button type="button" id="intro-open-systems">Comenzar a explorar</button>
+    <button type="button" id="intro-open-feedback" class="intro-secondary">Cómo evaluar el atlas</button>
    <small>Los modelos todavía no están registrados espacialmente. Se muestra uno por vez hasta verificar sus referencias anatómicas.</small>
   </section>
   <div class="atlas-progress" id="atlas-progress" aria-live="polite" role="status">Preparando el primer modelo…</div>
@@ -142,6 +143,7 @@
     <p class="draft-note" id="info-source-warning">Identificación provisional de origen. Las relaciones, inserciones e inervación se verificarán con bibliografía académica antes de marcarse como revisadas.</p>
     <button type="button" id="info-focus">Enfocar estructura</button>
     <button type="button" id="info-favorite">☆ Guardar en estudio</button>
+    <button type="button" id="info-feedback">Reportar esta estructura</button>
    </section>
   </div>
  </aside>
@@ -178,6 +180,49 @@
     </div>
    </section>
    <p class="drawer-footnote">Los favoritos y tus valoraciones se almacenan localmente cuando el navegador lo permite. Son autoevaluaciones, no notas de examen ni certificados de exactitud anatómica. No se envían a un servidor; cada registro depende de la versión del modelo 3D.</p>
+  </div>
+ </aside>
+ <aside class="atlas-drawer right" id="drawer-feedback" hidden aria-label="Evaluación pública del atlas">
+  <header><div><span class="eyebrow">PRUEBA PÚBLICA · INFORME</span><h2>Evaluar Atlas</h2></div><button type="button" data-close-drawer aria-label="Cerrar evaluación">×</button></header>
+  <div class="drawer-content">
+   <p class="drawer-intro">Ayúdanos a comprobar la facilidad de uso y detectar posibles errores anatómicos. Tus observaciones quedan <strong>pendientes de revisión</strong> hasta cotejar nombres y estructuras con bibliografía.</p>
+   <section class="feedback-steps">
+    <strong>Prueba rápida</strong>
+    <ol>
+     <li>Elige un sistema y filtra por región en «Capas y tejidos».</li>
+     <li>Selecciona una estructura, gírala, aísla la pieza y abre su ficha.</li>
+     <li>Indica si encontraste algo difícil de navegar o posiblemente incorrecto.</li>
+    </ol>
+   </section>
+   <p class="feedback-context" id="feedback-context" aria-live="polite">Observación general, sin estructura vinculada.</p>
+   <label for="feedback-category">¿Qué deseas evaluar?</label>
+   <select id="feedback-category">
+    <option value="navigation">Navegación y facilidad de uso</option>
+    <option value="readability">Diseño y legibilidad</option>
+    <option value="nomenclature">Nombre anatómico o lateralidad</option>
+    <option value="geometry">Estructura y geometría 3D</option>
+    <option value="missing">Estructura faltante</option>
+    <option value="other">Otra observación</option>
+   </select>
+   <label for="feedback-device">Dispositivo utilizado</label>
+   <select id="feedback-device">
+    <option value="desktop">Computadora</option>
+    <option value="mobile">Teléfono</option>
+    <option value="tablet">Tableta</option>
+    <option value="other">Otro dispositivo</option>
+   </select>
+   <label for="feedback-observation">¿Qué observaste?</label>
+   <textarea id="feedback-observation" rows="4" maxlength="1400" placeholder="Ej. No logro seleccionar el músculo profundo de la región posterior; la etiqueta parece incorrecta..."></textarea>
+   <label for="feedback-reference">Referencia o evidencia (opcional)</label>
+   <input id="feedback-reference" maxlength="350" placeholder="Libro, edición, sección o enlace de evidencia">
+   <p id="feedback-status" class="drawer-footnote" role="status" aria-live="polite">El informe solo saldrá de tu dispositivo cuando decidas compartirlo.</p>
+   <div class="feedback-actions">
+    <button type="button" id="feedback-github">Abrir reporte en GitHub</button>
+    <button type="button" id="feedback-copy">Copiar informe</button>
+    <button type="button" id="feedback-download">Descargar informe</button>
+   </div>
+   <button type="button" id="feedback-copy-link" class="feedback-invite">Copiar enlace para invitar a otra persona</button>
+   <p class="drawer-footnote">GitHub requiere una cuenta y los reportes publicados allí serán visibles al público. Si no tienes cuenta, copia o descarga el informe y compártelo con quien te invitó. No se envía automáticamente, ni debes incluir información personal o clínica.</p>
   </div>
  </aside>
  <aside class="atlas-drawer right" id="drawer-landmarks" hidden aria-label="Registro de puntos anatómicos">
