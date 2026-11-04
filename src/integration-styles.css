@@ -225,3 +225,35 @@ dialog button{padding:10px 14px;border:1px solid #92bda7;border-radius:8px;backg
  .study-item{grid-template-columns:minmax(0,1fr) auto;gap:6px}
  .study-item button:last-child{grid-column:2}
 }
+
+/* LAB 07 · autoevaluación voluntaria: la calificación es del usuario */
+.study-progress-summary{
+ display:grid;gap:8px;padding:12px 13px;
+ background:#102b2b;border:1px solid #446960;border-radius:10px;
+}
+.study-progress-summary strong{font-size:12px;color:#dbeee5}
+.study-progress-summary p{margin:0;font-size:11px;line-height:1.6;color:#b6dacb}
+.study-progress-summary button{
+ justify-self:start;padding:7px 10px;border:1px solid #546e68;
+ border-radius:8px;background:#1d3839;color:#deece5;font-size:11px
+}
+.study-start-options{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.study-start-options button{
+ min-height:45px;padding:10px 12px;border:1px solid #698f7a;
+ background:#254c43;border-radius:8px;color:#e7f6e9;font-size:12px;font-weight:600
+}
+.study-start-options button:hover:not(:disabled),.study-assessment button:hover:not(:disabled){
+ background:#356a58
+}
+.study-assessment{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.study-assessment button{
+ min-height:44px;padding:10px 11px;border:1px solid #6e9482;
+ background:#295448;border-radius:8px;color:#e9f7ed;font-size:12px;font-weight:600
+}
+.study-assessment #study-practice-again{background:#453c30;border-color:#a39066;color:#f0dfbc}
+.study-review #study-assessment-feedback{
+ margin:0;font-size:11px;line-height:1.5;color:#c0d4c6
+}
+@media(max-width:750px){
+ .study-start-options,.study-assessment{grid-template-columns:1fr}
+}
