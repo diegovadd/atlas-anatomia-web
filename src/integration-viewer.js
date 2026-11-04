@@ -18,6 +18,10 @@ import {
  recordResult,practiceFavorites,pruneProgress,progressFor,progressSummary
 } from './study-progress.js';
 import {createFeedback,feedbackText,feedbackIssueUrl} from './community-feedback.js';
+import {
+ anatomyCard,groupsForRegion,groupLabel,breadcrumbLabels,
+ TOUR_STEPS,TOUR_STORAGE_KEY
+} from './atlas-ux.js';
 import {QUICK_REGIONS,JOINT_VIEWS,NERVE_CONTEXT,visibleByLayer,visibleInRegion,updateSelection,isContextBone,regionsForSystem} from './exploration-rules.js';
 import {
  INTEGRATION_SYSTEMS,INTEGRATION_SYSTEM_MAP,INTEGRATION_REGIONS,
@@ -197,17 +201,21 @@ function layerVisible(e){
 function renderSubregions(){
  const select=$('structure-subregion');select.replaceChildren();
  const root=document.createElement('option');root.value='all';root.textContent='Todos los subgrupos';select.appendChild(root);
- const visible=activeEntries().filter(e=>regionAllows(e));
- const kinds=new Map();
- for(const e of visible){
-  const key=e.subregion||e.kind||e.layer;
-  if(key)kinds.set(key,(kinds.get(key)||0)+1);
+ const groups=groupsForRegion(activeEntries(),state.group,state.system);
+ for(const group of groups){
+  const opt=document.createElement('option');
+  opt.value=group.id;opt.textContent=group.label+' ('+group.count+')';select.appendChild(opt);
  }
- for(const [kind,count] of [...kinds].sort((a,b)=>String(a[0]).localeCompare(String(b[0]),'es'))){
-  const opt=document.createElement('option');opt.value=kind;opt.textContent=kind+' ('+count+')';select.appendChild(opt);
- }
- if(!kinds.has(state.subregion))state.subregion='all';
+ if(!groups.some(g=>g.id===state.subregion))state.subregion='all';
  select.value=state.subregion;
+ renderRegionPath();
+}
+function renderRegionPath(){
+ const region=INTEGRATION_REGIONS.find(r=>r.id===state.group)?.label||'Todo el cuerpo';
+ $('region-path').textContent=breadcrumbLabels({
+  systemLabel:sourceLabel(state.system),regionLabel:region,group:state.subregion
+ }).join(' › ');
+ $('region-home').disabled=state.group==='all'&&state.subregion==='all';
 }
 function pickRegion(region){
  state.group=region;state.subregion='all';state.limit=60;
@@ -281,6 +289,8 @@ function refreshMeshVisibility(){
  $('bubble-info').disabled=state.review.active&&!state.review.revealed;
  $('selection-info').disabled=state.review.active&&!state.review.revealed;
  $('selection-isolate').textContent=state.isolated?'Mostrar entorno':'Aislar';
+ $('info-isolate').textContent=state.isolated?'Mostrar entorno':'Aislar en 3D';
+ $('info-isolate').disabled=!state.selectedIds.size||state.review.active;
  if(state.selected){
   $('atlas-selection-name').textContent=state.review.active&&!state.review.revealed?
    'Identifica la estructura resaltada':
@@ -542,11 +552,13 @@ async function loadSystem(system){
 }
 function renderRegions(){
  const select=$('structure-region');select.replaceChildren();
- for(const r of INTEGRATION_REGIONS){
-  const opt=document.createElement('option');opt.value=r.id;opt.textContent=r.label;
+ for(const r of regionsForSystem(activeEntries(),state.system)){
+  const opt=document.createElement('option');
+  opt.value=r.id;opt.textContent=r.id==='all'?'Todo el cuerpo':r.label;
   select.appendChild(opt);
  }
  select.value=state.group;
+ renderRegionPath();
 }
 function renderCatalogue(){
  const host=$('structure-list');host.replaceChildren();
@@ -578,12 +590,23 @@ function renderInfo(){
  const selectedHost=$('info-selected-list');selectedHost.replaceChildren();
  selectedHost.hidden=state.selectedIds.size<2;
  if(!entry)return;
+ const location=INTEGRATION_REGIONS.find(r=>r.id===entry.region)?.label||'No clasificada';
+ const card=anatomyCard(entry,{systemLabel:sourceLabel(entry.system),regionLabel:location});
  $('info-name').textContent=state.selectedIds.size>1?
-  state.selectedIds.size+' estructuras seleccionadas':entry.name;
- $('info-system').textContent=sourceLabel(entry.system);
- $('info-original').textContent=entry.originalName;
+  state.selectedIds.size+' estructuras seleccionadas':card.name;
+ $('info-review-status').textContent=card.reviewLabel;
+ $('info-review-status').dataset.status=card.reviewStatus;
+ $('info-location-path').textContent=card.location;
+ $('info-system').textContent=card.system;
+ $('info-original').textContent=card.originalName;
  $('info-kind').textContent=entry.kind||'No especificado';
- $('info-region').textContent=INTEGRATION_REGIONS.find(r=>r.id===entry.region)?.label||'No clasificada';
+ $('info-region').textContent=card.region;
+ $('info-subgroup').textContent=card.group;
+ $('info-model-id').textContent=card.sourceId;
+ $('info-description').textContent=card.description;
+ $('info-relationships').textContent=card.relationships;
+ $('info-function-text').textContent=card.functionText;
+ $('info-bibliography').textContent=card.references;
  $('info-source-warning').textContent=state.system==='joint'?
   'Las superficies óseas, meniscos y discos se muestran para inspección visual. Esta versión no calcula colisiones ni certifica contacto óseo, articular o congruencia de las superficies.':
   state.system==='viscera'?
@@ -822,13 +845,53 @@ function readFeedback(){
  }
 }
 function copyPublicAtlasLink(){
- return new URL('./atlas-evaluacion.html',window.location.href).href;
+ return new URL('./atlas-ux.html',window.location.href).href;
+}
+/** Barra primaria minimalista; herramientas secundarias accesibles desde Más. */
+function closeExtraTools(){
+ $('bubble-extra-tools').hidden=true;
+ $('bubble-more').setAttribute('aria-expanded','false');
+}
+function toggleExtraTools(){
+ const panel=$('bubble-extra-tools');
+ panel.hidden=!panel.hidden;
+ $('bubble-more').setAttribute('aria-expanded',String(!panel.hidden));
+}
+/** Guía opcional, en el mismo documento y sin capturar información personal. */
+let tourIndex=0;
+function tourSeen(){
+ try{return window.localStorage.getItem(TOUR_STORAGE_KEY)==='1'}
+ catch{return true}
+}
+function markTourSeen(){
+ try{window.localStorage.setItem(TOUR_STORAGE_KEY,'1')}catch{}
+}
+function renderTour(){
+ const step=TOUR_STEPS[tourIndex];
+ $('tour-step').textContent='Paso '+(tourIndex+1)+' de '+TOUR_STEPS.length;
+ $('tour-title').textContent=step.title;
+ $('tour-description').textContent=step.body;
+ $('tour-prev').disabled=tourIndex===0;
+ $('tour-next').textContent=tourIndex===TOUR_STEPS.length-1?'Terminar':'Siguiente';
+}
+function startTour(){
+ const dialog=$('atlas-tour');
+ if(dialog.open)return;
+ closeExtraTools();closeDrawers();
+ if(state.review.active)stopReview();
+ tourIndex=0;renderTour();dialog.showModal();
+}
+function finishTour(){
+ const dialog=$('atlas-tour');
+ if(dialog.open)dialog.close();
+ markTourSeen();
 }
 function closeDrawers(){
  for(const id of ['drawer-systems','drawer-catalogue','drawer-info','drawer-study','drawer-landmarks','drawer-feedback'])$(id).hidden=true;
  $('atlas-backdrop').hidden=true;
 }
 function openDrawer(id,passive=false){
+ closeExtraTools();
  if(state.review.active&&id!=='drawer-study')stopReview();
  // En escritorio, conservar la lista abierta al seleccionar elementos en bloque.
  // Así Ctrl/Cmd y Mayús siguen funcionando sin tener que reabrir el catálogo.
@@ -933,8 +996,9 @@ $('active-layer').addEventListener('change',e=>{
 });
 $('structure-region').addEventListener('change',e=>pickRegion(e.target.value));
 $('structure-subregion').addEventListener('change',e=>{
- state.subregion=e.target.value;clearSelection();renderCatalogue();
+ state.subregion=e.target.value;clearSelection();renderCatalogue();renderRegionPath();
 });
+$('region-home').addEventListener('click',()=>pickRegion('all'));
 $('nerve-show-bones').addEventListener('change',e=>{
  state.nerveBones=e.target.checked;clearSelection();renderCatalogue();
 });
@@ -952,6 +1016,18 @@ $('intro-open-feedback').addEventListener('click',openFeedback);
 $('header-feedback').addEventListener('click',openFeedback);
 $('info-feedback').addEventListener('click',openFeedback);
 $('bubble-list').addEventListener('click',()=>openDrawer('drawer-catalogue'));
+$('bubble-more').addEventListener('click',toggleExtraTools);
+$('bubble-tour').addEventListener('click',startTour);
+$('intro-tour').addEventListener('click',startTour);
+$('tour-skip').addEventListener('click',finishTour);
+$('tour-prev').addEventListener('click',()=>{
+ if(tourIndex>0){tourIndex--;renderTour()}
+});
+$('tour-next').addEventListener('click',()=>{
+ if(tourIndex>=TOUR_STEPS.length-1){finishTour();return}
+ tourIndex++;renderTour();
+});
+$('atlas-tour').addEventListener('close',markTourSeen);
 $('bubble-info').addEventListener('click',()=>openDrawer('drawer-info'));
 $('bubble-study').addEventListener('click',()=>openDrawer('drawer-study'));
 $('selection-info').addEventListener('click',()=>openDrawer('drawer-info'));
@@ -961,6 +1037,10 @@ $('selection-isolate').addEventListener('click',isolate);
 $('selection-hide').addEventListener('click',hideSelected);
 $('selection-focus').addEventListener('click',()=>focusEntry(state.selected));
 $('info-focus').addEventListener('click',()=>focusEntry(state.selected));
+$('info-isolate').addEventListener('click',()=>{
+ if(!state.selectedIds.size)return;
+ isolate();focusEntry(state.selected);
+});
 $('selection-favorite').addEventListener('click',toggleSelectedFavorites);
 $('info-favorite').addEventListener('click',toggleSelectedFavorites);
 $('study-start').addEventListener('click',()=>startReview('all'));
@@ -982,6 +1062,28 @@ $('study-next').addEventListener('click',()=>{
  showFavorite(state.review.queue[state.review.index],true);
 });
 $('study-stop').addEventListener('click',()=>{stopReview();openDrawer('drawer-study')});
+$('feedback-share').addEventListener('click',async()=>{
+ const report=readFeedback();if(!report)return;
+ const text=feedbackText(report);
+ if(typeof navigator.share==='function'){
+  try{
+   await navigator.share({title:'Informe de prueba de Atlas',text});
+   $('feedback-status').textContent='Se abrió la opción para compartir. La entrega depende de la aplicación elegida.';
+   return;
+  }catch(err){
+   if(err?.name==='AbortError'){
+    $('feedback-status').textContent='No se compartió el informe; puedes volver a intentarlo.';
+    return;
+   }
+  }
+ }
+ try{
+  await navigator.clipboard.writeText(text);
+  $('feedback-status').textContent='En este dispositivo no hay menú de compartir: informe copiado. Pégalo en un mensaje a quien te invitó.';
+ }catch{
+  $('feedback-status').textContent='Este dispositivo no admite compartir ni copiar automáticamente. Usa «Descargar informe».';
+ }
+});
 $('feedback-copy').addEventListener('click',async()=>{
  const report=readFeedback();if(!report)return;
  try{
@@ -1058,6 +1160,9 @@ $('clear-landmarks').addEventListener('click',()=>{
 });
 window.addEventListener('keydown',e=>{
  if(e.key!=='Escape')return;
+ if(!$('atlas-tour').open&&!$('bubble-extra-tools').hidden){
+  closeExtraTools();return;
+ }
  if(state.markMode){
   state.markMode=false;canvas.classList.remove('is-marking');
   showStatus('Captura cancelada.');return;
@@ -1066,3 +1171,5 @@ window.addEventListener('keydown',e=>{
 });
 renderRegions();layerOptions();renderSubregions();renderRegionButtons();renderCatalogue();renderLandmarks();renderInfo();renderStudy();
 loadSystem('bone');
+// Ofrecer el recorrido una sola vez; permanece disponible en Más → Ayuda.
+window.setTimeout(()=>{if(!tourSeen()&&!$('atlas-tour').open)startTour()},1200);
