@@ -13,6 +13,10 @@ import {
  FAVORITES_STORAGE_KEY,FAVORITES_MAX,parseFavorites,serializeFavorites,
  favoriteFromEntry,favoriteKey,toggleFavorite,resolveFavorite,wrapReviewIndex
 } from './study-favorites.js';
+import {
+ STUDY_PROGRESS_KEY,parseProgress,serializeProgress,
+ recordResult,practiceFavorites,pruneProgress,progressFor,progressSummary
+} from './study-progress.js';
 import {QUICK_REGIONS,JOINT_VIEWS,NERVE_CONTEXT,visibleByLayer,visibleInRegion,updateSelection,isContextBone,regionsForSystem} from './exploration-rules.js';
 import {
  INTEGRATION_SYSTEMS,INTEGRATION_SYSTEM_MAP,INTEGRATION_REGIONS,
@@ -47,12 +51,18 @@ function loadStudyFavorites(){
  try{return parseFavorites(window.localStorage.getItem(FAVORITES_STORAGE_KEY),sources)}
  catch{return []}
 }
+function loadStudyProgress(favorites){
+ try{return parseProgress(window.localStorage.getItem(STUDY_PROGRESS_KEY),favorites)}
+ catch{return []}
+}
+const startupFavorites=loadStudyFavorites();
 const state={
  system:'bone',token:0,models:new Map(),recent:[],selected:null,selectedIds:new Set(),
  anchorId:null,subregion:'all',group:'all',layer:'all',layerChoice:'layer:all',
  nerveBones:true,nerveDiscs:true,jointBoneOpacity:.4,
  hidden:new Set(),isolated:false,markMode:false,annotations:[],pointerDown:null,
- favorites:loadStudyFavorites(),review:{active:false,revealed:false,index:0,ticket:0},
+ favorites:startupFavorites,progress:loadStudyProgress(startupFavorites),
+ review:{active:false,revealed:false,rated:false,index:0,ticket:0,queue:[]},
  currentTarget:new THREE.Vector3(),radius:3,limit:60
 };
 const MAX_CACHED_MODELS=2;
@@ -267,6 +277,8 @@ function refreshMeshVisibility(){
  $('atlas-selection').hidden=!state.selectedIds.size;
  $('selection-count').textContent=state.selectedIds.size>1?state.selectedIds.size+' estructuras seleccionadas':'';
  for(const id of ['bubble-isolate','selection-focus','selection-hide','selection-isolate'])$(id).disabled=!state.selectedIds.size;
+ $('bubble-info').disabled=state.review.active&&!state.review.revealed;
+ $('selection-info').disabled=state.review.active&&!state.review.revealed;
  $('selection-isolate').textContent=state.isolated?'Mostrar entorno':'Aislar';
  if(state.selected){
   $('atlas-selection-name').textContent=state.review.active&&!state.review.revealed?
@@ -606,18 +618,26 @@ function updateFavoriteActions(){
  const allSaved=entries.length>0&&entries.every(isFavoriteEntry);
  for(const id of ['selection-favorite','info-favorite']){
   const button=$(id);if(!button)continue;
-  button.disabled=!entries.length;
+  button.disabled=!entries.length||state.review.active;
   button.textContent=!entries.length?'☆ Guardar':
    allSaved?'★ Quitar de estudio':
    entries.length>1?'☆ Guardar selección ('+entries.length+')':'☆ Guardar en estudio';
  }
 }
+function persistProgress(){
+ try{
+  window.localStorage.setItem(STUDY_PROGRESS_KEY,serializeProgress(state.progress,state.favorites));
+  return true;
+ }catch{return false}
+}
 function persistStudy(){
+ state.progress=pruneProgress(state.progress,state.favorites);
  try{
   window.localStorage.setItem(FAVORITES_STORAGE_KEY,serializeFavorites(state.favorites));
-  $('study-feedback').textContent='Favoritos guardados en este navegador.';
+  if(!persistProgress())throw new Error('Almacenamiento local bloqueado');
+  $('study-feedback').textContent='Favoritos y resultados guardados en este navegador.';
  }catch{
-  $('study-feedback').textContent='Almacenamiento local no disponible: favoritos solo en esta sesión.';
+  $('study-feedback').textContent='Almacenamiento local no disponible: favoritos y progreso solo en esta sesión.';
  }
 }
 function toggleSelectedFavorites(){
@@ -638,8 +658,30 @@ function toggleSelectedFavorites(){
 }
 function stopReview(){
  if(!state.review.active)return;
- state.review.active=false;state.review.revealed=false;state.review.ticket++;
+ state.review.active=false;state.review.revealed=false;
+ state.review.rated=false;state.review.queue=[];state.review.ticket++;
  refreshMeshVisibility();renderStudy();
+}
+function startReview(mode='all'){
+ if(state.review.active)return;
+ const queue=mode==='practice'?
+  practiceFavorites(state.favorites,state.progress):[...state.favorites];
+ if(!queue.length)return;
+ state.review.active=true;state.review.queue=queue;
+ state.review.revealed=false;state.review.rated=false;state.review.index=0;
+ renderStudy();showFavorite(queue[0],true);
+}
+function rateReview(result){
+ if(!state.review.active||!state.review.revealed||state.review.rated)return;
+ const favorite=state.review.queue[state.review.index];
+ if(!favorite)return;
+ try{state.progress=recordResult(state.progress,favorite,result)}
+ catch{$('study-assessment-feedback').textContent='No se pudo registrar el intento.';return}
+ state.review.rated=true;
+ const saved=persistProgress();
+ $('study-feedback').textContent=saved?'Progreso actualizado en este navegador.':
+  'Resultado disponible solo durante esta sesión: almacenamiento bloqueado.';
+ renderStudy();
 }
 function removeFavorite(favorite){
  const key=favoriteKey(favorite);
@@ -665,7 +707,7 @@ async function showFavorite(favorite,review=false){
    layerOptions();renderRegions();renderSubregions();renderRegionButtons();
    state.hidden.delete(entry.id);state.isolated=false;
    state.selectedIds=new Set([entry.id]);state.selected=entry;state.anchorId=entry.id;
-   state.review.revealed=false;
+   state.review.revealed=false;state.review.rated=false;
    refreshMeshVisibility();renderInfo();renderCatalogue();focusEntry(entry);
    openDrawer('drawer-study');renderStudy();
   }else{
@@ -681,8 +723,15 @@ async function showFavorite(favorite,review=false){
 }
 function renderStudy(){
  $('study-count').textContent=state.favorites.length+' / '+FAVORITES_MAX;
+ const stats=progressSummary(state.favorites,state.progress);
+ $('study-summary').textContent=stats.reviewed+' de '+state.favorites.length+
+  ' practicadas · '+stats.remembered+' identificadas · '+stats.practice+
+  ' para repetir · '+stats.toPractice+' pendientes de refuerzo.';
+ $('study-clear-progress').disabled=state.review.active||!stats.reviewed;
  $('study-start').disabled=!state.favorites.length;
+ $('study-start-practice').disabled=!stats.toPractice;
  $('study-start').hidden=state.review.active;
+ $('study-start-practice').hidden=state.review.active;
  const host=$('study-list');host.replaceChildren();
  host.hidden=state.review.active;
  if(!state.favorites.length){
@@ -704,13 +753,21 @@ function renderStudy(){
   row.append(detail,view,remove);host.appendChild(row);
  }
  $('study-review').hidden=!state.review.active;
- if(!state.review.active||!state.favorites.length)return;
- state.review.index=wrapReviewIndex(state.review.index,state.favorites.length);
- const card=state.favorites[state.review.index];
- $('study-review-count').textContent='Estructura '+(state.review.index+1)+' de '+state.favorites.length;
+ if(!state.review.active||!state.review.queue.length)return;
+ state.review.index=wrapReviewIndex(state.review.index,state.review.queue.length);
+ const card=state.review.queue[state.review.index];
+ $('study-review-count').textContent='Estructura '+(state.review.index+1)+
+  ' de '+state.review.queue.length;
  $('study-answer').hidden=!state.review.revealed;
  $('study-answer').textContent=state.review.revealed?card.name:'';
  $('study-reveal').disabled=state.review.revealed;
+ $('study-remembered').disabled=!state.review.revealed||state.review.rated;
+ $('study-practice-again').disabled=!state.review.revealed||state.review.rated;
+ $('study-next').disabled=!state.review.rated;
+ $('study-assessment-feedback').textContent=state.review.rated?
+  'Intento registrado. Puedes pasar a la siguiente estructura.':
+  state.review.revealed?'¿La identificaste antes de revelar el nombre?':
+  'Revela la respuesta antes de valorar tu intento.';
 }
 function renderSystemMenu(){
  const host=$('system-list');host.replaceChildren();
@@ -730,6 +787,7 @@ function closeDrawers(){
  $('atlas-backdrop').hidden=true;
 }
 function openDrawer(id,passive=false){
+ if(state.review.active&&id!=='drawer-study')stopReview();
  // En escritorio, conservar la lista abierta al seleccionar elementos en bloque.
  // Así Ctrl/Cmd y Mayús siguen funcionando sin tener que reabrir el catálogo.
  if(passive&&id==='drawer-info'&&!$('drawer-catalogue').hidden&&window.innerWidth>850){
@@ -860,19 +918,23 @@ $('selection-focus').addEventListener('click',()=>focusEntry(state.selected));
 $('info-focus').addEventListener('click',()=>focusEntry(state.selected));
 $('selection-favorite').addEventListener('click',toggleSelectedFavorites);
 $('info-favorite').addEventListener('click',toggleSelectedFavorites);
-$('study-start').addEventListener('click',()=>{
- if(!state.favorites.length)return;
- state.review.active=true;state.review.revealed=false;state.review.index=0;
- showFavorite(state.favorites[0],true);
+$('study-start').addEventListener('click',()=>startReview('all'));
+$('study-start-practice').addEventListener('click',()=>startReview('practice'));
+$('study-remembered').addEventListener('click',()=>rateReview('remembered'));
+$('study-practice-again').addEventListener('click',()=>rateReview('practice'));
+$('study-clear-progress').addEventListener('click',()=>{
+ if(state.review.active||!window.confirm('¿Reiniciar los resultados de práctica? Tus favoritos se conservarán.'))return;
+ state.progress=[];persistProgress();renderStudy();
 });
 $('study-reveal').addEventListener('click',()=>{
  if(!state.review.active)return;
  state.review.revealed=true;refreshMeshVisibility();renderStudy();
 });
 $('study-next').addEventListener('click',()=>{
- if(!state.review.active||!state.favorites.length)return;
- state.review.index=wrapReviewIndex(state.review.index+1,state.favorites.length);
- state.review.revealed=false;showFavorite(state.favorites[state.review.index],true);
+ if(!state.review.active||!state.review.rated||!state.review.queue.length)return;
+ state.review.index=wrapReviewIndex(state.review.index+1,state.review.queue.length);
+ state.review.revealed=false;state.review.rated=false;
+ showFavorite(state.review.queue[state.review.index],true);
 });
 $('study-stop').addEventListener('click',()=>{stopReview();openDrawer('drawer-study')});
 $('bubble-reset').addEventListener('click',restore);
