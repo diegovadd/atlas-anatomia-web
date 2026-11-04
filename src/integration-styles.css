@@ -257,3 +257,68 @@ dialog button{padding:10px 14px;border:1px solid #92bda7;border-radius:8px;backg
 @media(max-width:750px){
  .study-start-options,.study-assessment{grid-template-columns:1fr}
 }
+
+/* Laboratorio de prueba pública: legibilidad y evaluación sin alterar el visor. */
+.atlas-header nav{align-items:center}
+.atlas-header #header-feedback{
+ border:1px solid #7eafa0;border-radius:9px;background:#245649;
+ color:#f0fcf4;font-size:12px;font-weight:700;padding:9px 13px;
+ min-height:39px;white-space:nowrap
+}
+.atlas-header #header-feedback:hover{background:#327361;border-color:#bce6d6}
+.atlas-top-panel select{font-size:14px;min-height:45px}
+.atlas-top-panel .eyebrow{font-size:11px}
+.atlas-top-panel #active-filter-status{font-size:11px;line-height:1.5}
+.bubble-rail button{font-size:11px;min-height:59px}
+.atlas-progress{font-size:12px}
+.drawer-footnote,.system-option small,.structure-entry small{font-size:12px}
+.structure-entry strong{font-size:14px}
+.atlas-intro .intro-secondary{
+ margin-top:8px;margin-left:5px;background:transparent;
+ border-color:#5f877c;color:#d5e8df;font-weight:500
+}
+.atlas-intro .intro-secondary:hover{background:#25473f}
+#info-feedback{
+ width:100%;margin-top:8px;padding:11px 12px;
+ background:#1b4040;border:1px solid #75a397;border-radius:8px;
+ font-size:12px;color:#e9fbf5;font-weight:600
+}
+.feedback-steps{
+ background:#142e32;border:1px solid #466960;border-radius:11px;
+ padding:13px 14px;display:grid;gap:8px
+}
+.feedback-steps strong{color:#e1f3e9;font-size:13px}
+.feedback-steps ol{margin:0;padding-left:19px;color:#c2d7ce;font-size:12px;line-height:1.75}
+.feedback-steps li+li{margin-top:5px}
+.feedback-context{
+ font-size:12px;line-height:1.5;margin:0;
+ border-left:3px solid #9ac8b2;background:#1a3839;color:#e4f7eb;
+ padding:11px 13px;border-radius:5px;overflow-wrap:anywhere
+}
+.feedback-actions{
+ display:grid;grid-template-columns:1fr 1fr;gap:8px
+}
+.feedback-actions button,.feedback-invite{
+ border:1px solid #769a88;border-radius:9px;background:#275546;
+ color:#f0faf1;padding:11px 13px;font-size:12px;font-weight:600;
+ min-height:44px;line-height:1.4
+}
+.feedback-actions button:first-child{
+ grid-column:1/-1;background:#356552;border-color:#aed5b8
+}
+.feedback-actions button:hover,.feedback-invite:hover{background:#3d755f}
+.feedback-invite{background:transparent;border-color:#5e827a}
+@media(max-width:750px){
+ .atlas-header .atlas-brand strong,.atlas-header .divider-sign{display:none}
+ .atlas-header nav{gap:7px}
+ .atlas-header nav a{font-size:10px}
+ .atlas-header #header-feedback{font-size:10px;padding:7px 9px;min-height:39px}
+ .atlas-top-panel .eyebrow{font-size:10px}
+ .atlas-top-panel #active-filter-status{font-size:10px}
+ .atlas-top-panel select{font-size:12px;min-height:42px}
+ .bubble-rail button{min-height:52px;font-size:10px}
+ .atlas-intro{max-height:calc(100% - 315px);overflow:auto}
+ .atlas-intro .intro-secondary{margin:8px 0 0}
+ .feedback-actions{grid-template-columns:1fr}
+ .feedback-actions button:first-child{grid-column:1}
+}
