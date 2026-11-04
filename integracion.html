@@ -7,14 +7,14 @@
  <title>ATLAS · Visor anatómico unificado · Laboratorio 06</title>
  <link rel="preconnect" href="https://fonts.googleapis.com">
  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600&display=swap" rel="stylesheet">
- <link rel="stylesheet" href="./src/integration-styles.css?v=atlas-20261102-study07">
+ <link rel="stylesheet" href="./src/integration-styles.css?v=atlas-20261103-practica08">
  <script type="importmap">
  {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
  </script>
  <style>/* Resguardo frente a barras regionales antiguas */
   #region-shortcuts,.atlas-region-shortcuts{display:none!important}
  </style>
- <script type="module" src="./src/integration-viewer.js?v=atlas-20261102-study07"></script>
+ <script type="module" src="./src/integration-viewer.js?v=atlas-20261103-practica08"></script>
 </head>
 <body>
 <div class="atlas-unified">
@@ -151,20 +151,33 @@
    <p class="drawer-intro">Guarda estructuras de cualquier sistema y repásalas identificando su geometría 3D. Los nombres y modelos son provisionales: este ejercicio no certifica precisión anatómica.</p>
    <div class="result-count"><strong>Guardadas en este navegador</strong><span id="study-count">0 / 80</span></div>
    <p id="study-feedback" class="drawer-footnote" role="status" aria-live="polite">Selecciona una pieza y usa «Guardar» para añadirla.</p>
+   <section class="study-progress-summary" aria-label="Resultados de la práctica">
+    <strong>Mi progreso de identificación</strong>
+    <p id="study-summary" aria-live="polite">Sin intentos registrados.</p>
+    <button type="button" id="study-clear-progress" disabled>Reiniciar resultados (conservar favoritos)</button>
+   </section>
    <div id="study-list" class="study-list" role="list"></div>
-   <button type="button" id="study-start" disabled>Iniciar repaso 3D</button>
+   <div class="study-start-options">
+    <button type="button" id="study-start" disabled>Repasar todos los favoritos</button>
+    <button type="button" id="study-start-practice" disabled>Repasar solo los difíciles</button>
+   </div>
    <section id="study-review" class="study-review" hidden aria-label="Identificación en tres dimensiones">
     <span class="eyebrow" id="study-review-count">Tarjeta 1 de 1</span>
     <strong>¿Qué estructura está resaltada en el modelo?</strong>
     <p class="drawer-footnote">Gira y acerca el modelo. Revela la respuesta para comprobar tu identificación.</p>
     <p id="study-answer" hidden aria-live="polite"></p>
+    <div class="study-assessment" role="group" aria-label="Autoevaluación" >
+     <button type="button" id="study-remembered" disabled>Lo identifiqué</button>
+     <button type="button" id="study-practice-again" disabled>Necesito practicar</button>
+    </div>
+    <p id="study-assessment-feedback" role="status" aria-live="polite">Revela la respuesta antes de valorar tu intento.</p>
     <div class="study-controls">
      <button type="button" id="study-reveal">Mostrar respuesta</button>
      <button type="button" id="study-next">Siguiente estructura</button>
      <button type="button" id="study-stop">Finalizar repaso</button>
     </div>
    </section>
-   <p class="drawer-footnote">Los favoritos se almacenan localmente cuando el navegador lo permite. No se envían a un servidor. Cada favorito está vinculado a la versión de su fuente 3D; si cambia el modelo, puede ser necesario guardarlo otra vez.</p>
+   <p class="drawer-footnote">Los favoritos y tus valoraciones se almacenan localmente cuando el navegador lo permite. Son autoevaluaciones, no notas de examen ni certificados de exactitud anatómica. No se envían a un servidor; cada registro depende de la versión del modelo 3D.</p>
   </div>
  </aside>
  <aside class="atlas-drawer right" id="drawer-landmarks" hidden aria-label="Registro de puntos anatómicos">
