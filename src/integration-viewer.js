@@ -284,8 +284,12 @@ function refreshMeshVisibility(){
   }
  }
  $('atlas-selection').hidden=!state.selectedIds.size;
+ $('atlas-selection').classList.toggle('is-review',state.review.active);
+ $('atlas-study-hint').hidden=state.selectedIds.size>0||state.review.active;
+ $('selection-clear').disabled=state.review.active;
  $('selection-count').textContent=state.selectedIds.size>1?state.selectedIds.size+' estructuras seleccionadas':'';
- for(const id of ['bubble-isolate','selection-focus','selection-hide','selection-isolate'])$(id).disabled=!state.selectedIds.size;
+ for(const id of ['bubble-isolate','selection-focus','selection-hide','selection-isolate'])
+  $(id).disabled=!state.selectedIds.size||state.review.active;
  $('bubble-info').disabled=state.review.active&&!state.review.revealed;
  $('selection-info').disabled=state.review.active&&!state.review.revealed;
  $('selection-isolate').textContent=state.isolated?'Mostrar entorno':'Aislar';
@@ -311,21 +315,33 @@ function selectEntry(entry,focus=false,event=null){
  const range=Boolean(event?.shiftKey);
  const order=activeEntries().filter(matchesFilters).map(x=>x.id);
  state.selectedIds=updateSelection(state.selectedIds,entry.id,{
-  add:multi,range,anchor:state.anchorId,order
+  add:multi,range,anchor:state.anchorId,order,toggle:true
  });
+ // Segundo toque sobre la misma estructura: quitar el resaltado sin ocultarla.
+ if(!state.selectedIds.size){clearSelection();return}
  state.anchorId=range?state.anchorId:entry.id;
  state.selected=state.selectedIds.size?(state.selectedIds.has(entry.id)?entry:
   activeModel()?.byId.get([...state.selectedIds].at(-1))||null):null;
  state.isolated=false;
  refreshMeshVisibility();renderInfo();renderCatalogue();
  if(focus&&state.selected&&activeModel())focusEntry(state.selected);
- if(state.selectedIds.size)openDrawer('drawer-info',true);
- else closeDrawers();
+ // La ficha no aparece automáticamente: priorizar el modelo y su tarjeta compacta.
+ // La búsqueda normal regresa al modelo; Ctrl/Mayús o selección múltiple
+ // mantienen la lista abierta para seguir acumulando piezas.
+ if(focus&&!multi&&!range&&!$('drawer-catalogue').hidden)closeDrawers();
 }
 function clearSelection(){
  if(state.review.active)stopReview();
  state.selected=null;state.selectedIds.clear();state.anchorId=null;state.isolated=false;
  refreshMeshVisibility();renderInfo();renderCatalogue();
+ // Si la ficha estaba abierta, dejar libre la escena 3D. El catálogo
+ // y las demás herramientas permanecen tal como estaban.
+ const info=$('drawer-info');
+ if(!info.hidden){
+  info.hidden=true;info.classList.remove('auto-info');
+  if(['drawer-systems','drawer-catalogue','drawer-study','drawer-landmarks','drawer-feedback']
+    .every(id=>$(id).hidden))$('atlas-backdrop').hidden=true;
+ }
 }
 function isolate(){
  if(!state.selectedIds.size)return;
@@ -756,6 +772,8 @@ function renderStudy(){
  $('study-start-practice').disabled=!stats.toPractice;
  $('study-start').hidden=state.review.active;
  $('study-start-practice').hidden=state.review.active;
+ $('study-saved-heading').hidden=state.review.active;
+ $('study-progress-details').hidden=state.review.active;
  const host=$('study-list');host.replaceChildren();
  host.hidden=state.review.active;
  if(!state.favorites.length){
@@ -845,7 +863,7 @@ function readFeedback(){
  }
 }
 function copyPublicAtlasLink(){
- return new URL('./atlas-ux.html',window.location.href).href;
+ return new URL('./atlas-estudiar.html',window.location.href).href;
 }
 /** Barra primaria minimalista; herramientas secundarias accesibles desde Más. */
 function closeExtraTools(){
@@ -970,13 +988,20 @@ canvas.addEventListener('pointerdown',event=>{state.pointerDown={x:event.clientX
 canvas.addEventListener('pointerup',event=>{
  const down=state.pointerDown;state.pointerDown=null;
  if(!down||Math.hypot(event.clientX-down.x,event.clientY-down.y)>5)return;
+ // Durante el examen 3D los toques no cambian la pieza que se está estudiando.
+ if(state.review.active)return;
  const model=activeModel();if(!model)return;
  const rect=canvas.getBoundingClientRect();
  pointer.set(2*(event.clientX-rect.left)/rect.width-1,1-2*(event.clientY-rect.top)/rect.height);
  raycaster.setFromCamera(pointer,camera);
  const hits=raycaster.intersectObjects([...model.meshMap.keys()].filter(m=>m.visible),false);
  const first=hits.find(h=>model.meshMap.has(h.object));
- if(!first)return;
+ if(!first){
+  // Un toque en el fondo libera la selección; no interrumpe la captura
+  // de puntos ni el repaso de identificación anatómica.
+  if(!state.markMode&&!state.review.active&&state.selectedIds.size)clearSelection();
+  return;
+ }
  const entry=model.meshMap.get(first.object);
  if(state.markMode)placeLandmark(first,entry);
  else selectEntry(entry,false,event);
@@ -1031,6 +1056,7 @@ $('atlas-tour').addEventListener('close',markTourSeen);
 $('bubble-info').addEventListener('click',()=>openDrawer('drawer-info'));
 $('bubble-study').addEventListener('click',()=>openDrawer('drawer-study'));
 $('selection-info').addEventListener('click',()=>openDrawer('drawer-info'));
+$('selection-clear').addEventListener('click',clearSelection);
 $('bubble-mark').addEventListener('click',()=>openDrawer('drawer-landmarks'));
 $('bubble-isolate').addEventListener('click',isolate);
 $('selection-isolate').addEventListener('click',isolate);
@@ -1116,8 +1142,8 @@ $('feedback-copy-link').addEventListener('click',async()=>{
  }
 });
 $('feedback-device').value=window.matchMedia('(max-width: 750px)').matches?'mobile':'desktop';
-$('bubble-reset').addEventListener('click',restore);
-$('restore-visible').addEventListener('click',restore);
+$('bubble-reset').addEventListener('click',()=>{restore();closeExtraTools()});
+$('restore-visible').addEventListener('click',()=>{restore();closeExtraTools()});
 for(const button of document.querySelectorAll('[data-view]'))
  button.addEventListener('click',()=>{if(activeModel())setView(button.dataset.view,state.currentTarget,state.radius)});
 for(const button of document.querySelectorAll('[data-close-drawer]'))
@@ -1171,5 +1197,5 @@ window.addEventListener('keydown',e=>{
 });
 renderRegions();layerOptions();renderSubregions();renderRegionButtons();renderCatalogue();renderLandmarks();renderInfo();renderStudy();
 loadSystem('bone');
-// Ofrecer el recorrido una sola vez; permanece disponible en Más → Ayuda.
-window.setTimeout(()=>{if(!tourSeen()&&!$('atlas-tour').open)startTour()},1200);
+// La guía es voluntaria: Atlas abre directamente en el modelo para estudiar.
+// Accesible siempre desde Más → Ayuda.
