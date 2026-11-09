@@ -81,13 +81,18 @@ export function regionsForSystem(entries,system){
  return QUICK_REGIONS.filter(region=>region.id==='all'||
   relevant.some(entry=>visibleInRegion(entry,region.id,system)));
 }
-export function updateSelection(previous,id,{add=false,range=false,anchor=null,order=[]}={}){
+/** Un segundo toque sin modificadores quita la selección individual.
+ * El modo múltiple y Mayús conservan su comportamiento independiente.
+ */
+export function updateSelection(previous,id,{add=false,range=false,anchor=null,order=[],toggle=false}={}){
  const next=new Set(previous);
  if(range&&anchor&&order.includes(anchor)&&order.includes(id)){
   const a=order.indexOf(anchor),b=order.indexOf(id);
   for(const item of order.slice(Math.min(a,b),Math.max(a,b)+1))next.add(item);
  }else if(add){
   if(next.has(id))next.delete(id);else next.add(id);
+ }else if(toggle&&next.size===1&&next.has(id)){
+  next.clear();
  }else{
   next.clear();next.add(id);
  }
