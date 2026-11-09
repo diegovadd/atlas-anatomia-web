@@ -411,3 +411,152 @@ dialog button{padding:10px 14px;border:1px solid #92bda7;border-radius:8px;backg
  .atlas-tour p{font-size:13px}
  .tour-actions button{min-width:77px}
 }
+
+/* LAB 11 · estudiar primero; herramientas avanzadas sin ruido visual. */
+.atlas-header{height:58px;padding-inline:20px}
+.atlas-brand strong{font-weight:500;color:#b7c9c6}
+.atlas-header #header-feedback{min-height:36px;background:transparent;border-color:#52766a;color:#c1e2d4}
+.atlas-top-panel{
+ top:16px;left:112px;gap:11px;padding:10px 12px;
+ border-color:#3b5854;background:#0b1b21d9;
+ box-shadow:0 8px 25px #0003
+}
+.atlas-top-panel .eyebrow{letter-spacing:.08em;font-size:10px}
+.atlas-top-panel select{min-height:41px;font-size:13px}
+.atlas-top-panel #active-filter-status{font-size:10px}
+.atlas-top-panel .model-meta{display:none}
+.bubble-rail{
+ left:12px;width:79px;gap:4px;padding:7px;
+ border-color:#304d4c;background:#081923cf;
+ box-shadow:0 12px 30px #0006
+}
+.bubble-rail>button{min-height:56px;font-size:10px}
+.bubble-rail>button span{font-size:23px}
+#bubble-study{color:#dfeee4}
+.bubble-extra-tools{
+ width:148px;top:0;gap:3px;padding:7px;
+ border-color:#45655a;background:#10242bef
+}
+.bubble-extra-tools button{min-height:48px;display:flex;align-items:center;justify-content:flex-start;gap:10px;padding:7px 10px;font-size:12px}
+.bubble-extra-tools button span{font-size:19px}
+.bubble-extra-tools .multi-toggle{
+ display:flex;align-items:center;justify-content:flex-start;
+ white-space:normal;gap:9px;border:1px solid #37594e;
+ padding:11px 10px;border-radius:9px;
+ background:transparent;color:#dbe9df;font-size:11px
+}
+.bubble-extra-tools .multi-toggle input{flex:none;width:17px;height:17px}
+.atlas-bottom-tools{
+ right:18px;bottom:17px;gap:4px;
+ background:#0c2028be;border:1px solid #2e4b4d;
+ border-radius:11px;padding:4px
+}
+.atlas-bottom-tools button{font-size:11px;padding:8px 10px;background:transparent;border-color:transparent}
+.atlas-bottom-tools button:hover{background:#2a4942}
+.atlas-bottom-tools #overlay-lock{display:none}
+.atlas-credit{
+ right:14px;top:16px;width:205px;
+ background:#081a21a9;border-color:#314d4c;
+ padding:9px 10px;font-size:10px
+}
+.atlas-credit>span{font-size:10px}
+.atlas-selection{
+ left:112px;bottom:25px;width:max-content;max-width:min(490px,calc(100% - 240px));
+ min-width:250px;gap:9px;padding:13px 15px;
+ background:#0c2226ed;border-color:#638577;
+ box-shadow:0 12px 32px #0007
+}
+.atlas-selection strong{font-size:17px}
+.selection-tools{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.selection-tools button{font-size:11px;padding:9px 11px;min-height:37px}
+.selection-tools #selection-info{
+ background:#335f50;border-color:#94b9a3;font-weight:600
+}
+.selection-tools #selection-clear{background:transparent;border-color:#57736d;color:#d7e5db}
+.selection-more{border-top:1px solid #3c5852;padding-top:6px}
+.selection-more summary{
+ width:max-content;max-width:100%;cursor:pointer;font-size:11px;
+ color:#b6d2c4;padding:5px 0
+}
+.selection-extra{display:flex;gap:5px;flex-wrap:wrap;padding-top:7px}
+.selection-extra button{
+ border:1px solid #42675e;background:#1b3737;color:#e6f4ec;
+ border-radius:8px;padding:8px 10px;font-size:11px
+}
+.atlas-study-hint{
+ position:absolute;z-index:3;left:112px;bottom:81px;
+ max-width:380px;padding:9px 12px;margin:0;
+ background:#0b1d24c0;border:1px solid #355652;border-radius:9px;
+ color:#c3ddce;font-size:11px;line-height:1.4;pointer-events:none
+}
+.atlas-progress{
+ left:112px;bottom:17px;max-width:350px;
+ background:transparent;border:0;box-shadow:none;
+ padding:6px 1px;color:#a9c9bd;font-size:10px
+}
+@media(max-width:1050px){
+ .atlas-top-panel{max-width:calc(100% - 340px)}
+ .atlas-credit{top:auto;bottom:70px;right:14px}
+ .atlas-selection{max-width:calc(100% - 225px)}
+}
+@media(max-width:750px){
+ .atlas-header{height:55px;padding:0 11px}
+ .atlas-header .atlas-brand a{font-size:21px}
+ .atlas-header #header-feedback{padding:6px 9px;min-height:34px;font-size:10px}
+ .bubble-rail{left:9px;right:9px;top:7px;width:auto;padding:5px;gap:2px}
+ .bubble-rail>button{flex:1;min-width:54px;min-height:50px;font-size:10px}
+ .bubble-rail>button span{font-size:21px}
+ .bubble-extra-tools{
+  top:calc(100% + 7px);left:0;right:0;width:100%;
+  grid-template-columns:repeat(3,minmax(0,1fr));max-height:184px;
+  gap:4px;overflow-y:auto
+ }
+ .bubble-extra-tools button{display:grid;place-content:center;justify-items:center;min-height:58px;font-size:10px;padding:6px}
+ .bubble-extra-tools button span{font-size:20px}
+ .bubble-extra-tools .multi-toggle{
+  grid-column:span 2;justify-content:center;font-size:11px;padding:7px
+ }
+ .atlas-top-panel{left:9px;right:9px;top:78px;max-width:none;gap:7px;padding:8px}
+ .atlas-top-panel>div{flex:1}
+ .atlas-top-panel select,.atlas-top-panel #active-layer{min-width:0;max-width:none;width:100%;padding:8px 6px;font-size:11px;min-height:40px}
+ .atlas-top-panel #active-filter-status{font-size:10px}
+ .atlas-selection{
+  left:9px;right:9px;bottom:71px;max-width:none;width:auto;min-width:0;
+  padding:10px 12px;gap:7px
+ }
+ .atlas-selection strong{font-size:15px}
+ .selection-tools button{padding:8px 9px;font-size:10px;min-height:36px}
+ .atlas-bottom-tools{
+  left:auto;right:9px;bottom:9px;max-width:none;gap:2px;padding:4px
+ }
+ .atlas-bottom-tools button{flex:none;font-size:10px;padding:8px}
+ .atlas-study-hint{
+  left:9px;right:9px;bottom:78px;max-width:none;text-align:center;
+  padding:7px 10px;font-size:10px
+ }
+ .atlas-progress{left:9px;right:auto;bottom:10px;max-width:35%;font-size:9px}
+ .atlas-credit{
+  top:auto;bottom:135px;right:9px;max-width:180px;width:auto;
+  padding:7px 9px;background:#091b22aa
+ }
+}
+
+/* El repaso conserva el foco en la pregunta y evita acciones accidentales. */
+.atlas-selection.is-review .selection-more{display:none}
+.atlas-selection.is-review #selection-clear{display:none}
+
+/* Entrada a la práctica sin paneles secundarios desplegados por defecto. */
+.study-progress-details{
+ margin-top:3px;border-top:1px solid #344f4c;padding-top:9px
+}
+.study-progress-details summary{
+ color:#b8d7c5;font-size:12px;cursor:pointer;padding:7px 1px
+}
+.study-progress-details .study-progress-summary{margin-top:8px}
+.study-start-options button{min-height:46px}
+#study-start{background:#34614d;border-color:#91b89c}
+#study-saved-heading{margin-top:1px}
+.bubble-extra-tools .multi-toggle:focus-within,
+.selection-more:focus-within,.study-progress-details:focus-within{
+ outline:2px solid #a6e3c9;outline-offset:2px;border-radius:6px
+}
