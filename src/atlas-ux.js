@@ -100,7 +100,7 @@ export const TOUR_STEPS=Object.freeze([
  }),
  Object.freeze({
   title:'Herramientas y observaciones',
-  body:'Abre Más para estudiar o marcar puntos. Si un nombre parece incorrecto, usa Evaluar Atlas; puedes compartir un informe sin tener cuenta de GitHub.',
+  body:'Abre Estudio para guardar estructuras y repasarlas en 3D. En Más encontrarás las herramientas avanzadas y la ayuda. Usa Opiniones si detectas un nombre dudoso.',
   target:'bubble-more'
  })
 ]);
