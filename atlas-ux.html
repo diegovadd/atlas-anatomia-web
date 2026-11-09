@@ -7,33 +7,35 @@
  <title>ATLAS · Nueva experiencia 3D · Prueba UX10</title>
  <link rel="preconnect" href="https://fonts.googleapis.com">
  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600&display=swap" rel="stylesheet">
- <link rel="stylesheet" href="./src/integration-styles.css?v=atlas-20261103-ux10">
+ <link rel="stylesheet" href="./src/integration-styles.css?v=atlas-20261109-minimal11">
  <script type="importmap">
  {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
  </script>
  <style>/* Resguardo frente a barras regionales antiguas */
   #region-shortcuts,.atlas-region-shortcuts{display:none!important}
  </style>
- <script type="module" src="./src/integration-viewer.js?v=atlas-20261103-ux10"></script>
+ <script type="module" src="./src/integration-viewer.js?v=atlas-20261109-minimal11"></script>
 </head>
 <body>
 <div class="atlas-unified">
  <header class="atlas-header">
   <div class="atlas-brand"><a href="./preview.html">ATLAS<span>.</span></a><span class="divider-sign">/</span><strong>Exploración anatómica</strong><span class="lab-tag">LAB · PRUEBA PÚBLICA</span></div>
-  <nav aria-label="Navegación"><a href="./preview.html">Sistemas</a><a href="./index.html">Cráneo detallado</a><button type="button" id="header-feedback" aria-label="Evaluar Atlas y enviar una observación">Evaluar Atlas</button></nav>
+  <nav aria-label="Navegación"><button type="button" id="header-feedback" aria-label="Evaluar Atlas y enviar una observación">Opiniones</button></nav>
  </header>
  <main class="atlas-viewport" id="atlas-viewport">
   <canvas id="atlas-one-canvas" aria-label="Visor 3D único para todos los sistemas anatómicos"></canvas>
   <nav class="bubble-rail" aria-label="Menú flotante de herramientas">
    <button type="button" id="bubble-systems" title="Cambiar sistema anatómico"><span aria-hidden="true">◉</span>Sistemas</button>
-   <button type="button" id="bubble-list" title="Buscar y seleccionar estructuras"><span aria-hidden="true">☷</span>Regiones</button>
-   <button type="button" id="bubble-info" title="Ficha de estructura" aria-label="Abrir ficha anatómica"><span aria-hidden="true">ⓘ</span>Ficha</button>
+   <button type="button" id="bubble-list" title="Buscar y seleccionar estructuras"><span aria-hidden="true">⌕</span>Buscar</button>
+   <button type="button" id="bubble-study" title="Favoritos y repaso de identificación"><span aria-hidden="true">☆</span>Estudio</button>
    <button type="button" id="bubble-more" title="Mostrar herramientas adicionales" aria-controls="bubble-extra-tools" aria-expanded="false"><span aria-hidden="true">···</span>Más</button>
    <div id="bubble-extra-tools" class="bubble-extra-tools" hidden>
-   <button type="button" id="bubble-study" title="Favoritos y repaso de identificación"><span aria-hidden="true">☆</span>Estudio</button>
+   <button type="button" id="bubble-info" title="Ficha de estructura" aria-label="Abrir ficha anatómica"><span aria-hidden="true">ⓘ</span>Ficha</button>
    <button type="button" id="bubble-mark" title="Marcar puntos anatómicos"><span aria-hidden="true">⌖</span>Puntos</button>
    <button type="button" id="bubble-isolate" disabled title="Aislar estructura seleccionada"><span aria-hidden="true">◎</span>Aislar</button>
    <button type="button" id="bubble-reset" title="Restablecer la vista"><span aria-hidden="true">↺</span>Reiniciar</button>
+   <button type="button" id="restore-visible" title="Restaurar estructuras retiradas"><span aria-hidden="true">◌</span>Restaurar</button>
+   <label class="multi-toggle" for="multi-select-toggle"><input type="checkbox" id="multi-select-toggle"> Selección múltiple</label>
     <button type="button" id="bubble-tour" title="Guía para comenzar a usar Atlas"><span aria-hidden="true">?</span>Ayuda</button>
    </div>
   </nav>
@@ -51,7 +53,7 @@
    </div>
    <div class="model-meta"><span class="eyebrow">MODELO EN PANTALLA</span><strong id="active-model-caption">Una fuente · Sin superposición</strong></div>
   </section>
-  <section class="atlas-intro" id="atlas-intro">
+  <section class="atlas-intro" id="atlas-intro" hidden>
    <span class="eyebrow">ATLAS · EXPLORACIÓN Y PRUEBA PÚBLICA</span>
    <h1>La anatomía, <em>estructura por estructura.</em></h1>
    <p>Selecciona un sistema, filtra por región en «Capas y tejidos» y explora cada pieza en 3D. Si detectas una etiqueta dudosa o una dificultad, cuéntanos.</p>
@@ -60,6 +62,7 @@
     <button type="button" id="intro-tour" class="intro-secondary">Guía de navegación</button>
    <small>Los modelos todavía no están registrados espacialmente. Se muestra uno por vez hasta verificar sus referencias anatómicas.</small>
   </section>
+  <p class="atlas-study-hint" id="atlas-study-hint">Toca una estructura para estudiarla. Tócala otra vez para deseleccionarla.</p>
   <div class="atlas-progress" id="atlas-progress" aria-live="polite" role="status">Preparando el primer modelo…</div>
   <div class="atlas-loading" id="atlas-loading" role="status" aria-live="polite" hidden>
    <strong id="atlas-loading-title">Descargando geometría anatómica…</strong>
@@ -75,20 +78,25 @@
    <strong id="atlas-selection-name">Selecciona una pieza</strong>
    <span class="selection-count" id="selection-count" aria-live="polite"></span>
    <div class="selection-tools">
-    <button type="button" id="selection-focus">Enfocar</button>
-    <button type="button" id="selection-hide">Retirar</button>
-    <button type="button" id="selection-isolate">Aislar</button>
-    <button type="button" id="selection-info">Ficha ↗</button>
+    <button type="button" id="selection-info">Ver ficha</button>
     <button type="button" id="selection-favorite">☆ Guardar</button>
+    <button type="button" id="selection-clear" title="Deseleccionar y volver a explorar">× Deseleccionar</button>
    </div>
+   <details class="selection-more">
+    <summary>Más acciones</summary>
+    <div class="selection-extra">
+     <button type="button" id="selection-focus">Enfocar</button>
+     <button type="button" id="selection-hide">Retirar del modelo</button>
+     <button type="button" id="selection-isolate">Aislar</button>
+    </div>
+   </details>
   </section>
   <section class="atlas-bottom-tools" aria-label="Controles de vistas anatómicas">
    <button type="button" data-view="front">Anterior</button>
    <button type="button" data-view="back">Posterior</button>
    <button type="button" data-view="left">Lateral</button>
-   <button type="button" id="restore-visible">Mostrar todas</button>
-   <label class="multi-toggle"><input type="checkbox" id="multi-select-toggle"> Selección múltiple</label>
-   <button type="button" id="overlay-lock" title="No disponible sin registro anatómico" disabled>Superponer sistemas <span aria-hidden="true">⌁</span></button>
+
+   <button type="button" id="overlay-lock" title="No disponible sin registro anatómico" disabled hidden>Superponer sistemas <span aria-hidden="true">⌁</span></button>
   </section>
  </main>
  <button type="button" class="atlas-backdrop" id="atlas-backdrop" hidden aria-label="Cerrar panel"></button>
@@ -173,19 +181,22 @@
  <aside class="atlas-drawer right" id="drawer-study" hidden aria-label="Favoritos y repaso anatómico">
   <header><div><span class="eyebrow">LABORATORIO DE ESTUDIO · 07</span><h2>Mis estructuras</h2></div><button type="button" data-close-drawer aria-label="Cerrar estudio">×</button></header>
   <div class="drawer-content">
-   <p class="drawer-intro">Guarda estructuras de cualquier sistema y repásalas identificando su geometría 3D. Los nombres y modelos son provisionales: este ejercicio no certifica precisión anatómica.</p>
-   <div class="result-count"><strong>Guardadas en este navegador</strong><span id="study-count">0 / 80</span></div>
-   <p id="study-feedback" class="drawer-footnote" role="status" aria-live="polite">Selecciona una pieza y usa «Guardar» para añadirla.</p>
-   <section class="study-progress-summary" aria-label="Resultados de la práctica">
-    <strong>Mi progreso de identificación</strong>
-    <p id="study-summary" aria-live="polite">Sin intentos registrados.</p>
-    <button type="button" id="study-clear-progress" disabled>Reiniciar resultados (conservar favoritos)</button>
-   </section>
-   <div id="study-list" class="study-list" role="list"></div>
+   <p class="drawer-intro">Selecciona estructuras en el modelo, pulsa ☆ Guardar y practica identificándolas en 3D. Las fichas siguen pendientes de revisión académica.</p>
    <div class="study-start-options">
-    <button type="button" id="study-start" disabled>Repasar todos los favoritos</button>
-    <button type="button" id="study-start-practice" disabled>Repasar solo los difíciles</button>
+    <button type="button" id="study-start" disabled>Comenzar repaso 3D</button>
+    <button type="button" id="study-start-practice" disabled>Repetir difíciles</button>
    </div>
+   <p id="study-feedback" class="drawer-footnote" role="status" aria-live="polite">Selecciona una pieza y usa «Guardar» para añadirla.</p>
+   <div class="result-count" id="study-saved-heading"><strong>Estructuras guardadas</strong><span id="study-count">0 / 80</span></div>
+   <div id="study-list" class="study-list" role="list"></div>
+   <details id="study-progress-details" class="study-progress-details">
+    <summary>Ver estadísticas de práctica</summary>
+    <section class="study-progress-summary" aria-label="Resultados de la práctica">
+     <strong>Mi progreso de identificación</strong>
+     <p id="study-summary" aria-live="polite">Sin intentos registrados.</p>
+     <button type="button" id="study-clear-progress" disabled>Reiniciar resultados (conservar favoritos)</button>
+    </section>
+   </details>
    <section id="study-review" class="study-review" hidden aria-label="Identificación en tres dimensiones">
     <span class="eyebrow" id="study-review-count">Tarjeta 1 de 1</span>
     <strong>¿Qué estructura está resaltada en el modelo?</strong>
