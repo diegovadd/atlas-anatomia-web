@@ -7,14 +7,14 @@
  <title>ATLAS · Estudiar anatomía 3D · Experiencia minimalista</title>
  <link rel="preconnect" href="https://fonts.googleapis.com">
  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600&display=swap" rel="stylesheet">
- <link rel="stylesheet" href="./src/integration-styles.css?v=atlas-20261109-minimal11">
+ <link rel="stylesheet" href="./src/integration-styles.css?v=atlas-20261109-search12">
  <script type="importmap">
  {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
  </script>
  <style>/* Resguardo frente a barras regionales antiguas */
   #region-shortcuts,.atlas-region-shortcuts{display:none!important}
  </style>
- <script type="module" src="./src/integration-viewer.js?v=atlas-20261109-minimal11"></script>
+ <script type="module" src="./src/integration-viewer.js?v=atlas-20261109-search12"></script>
 </head>
 <body>
 <div class="atlas-unified">
@@ -281,6 +281,23 @@
    <p class="drawer-footnote">Los puntos permanecen en esta sesión hasta exportarlos. No hay almacenamiento automático, diagnóstico ni cálculo de superposición. Los archivos importados se validan y nunca se ejecutan como código.</p>
   </div>
  </aside>
+ <dialog id="atlas-quick-search" class="atlas-quick-search" aria-labelledby="quick-search-title">
+  <div class="quick-search-shell">
+   <header class="quick-search-header">
+    <div><span class="eyebrow">ENCUENTRA UNA ESTRUCTURA</span><h2 id="quick-search-title">Buscar en todo Atlas</h2></div>
+    <button type="button" id="quick-search-close" aria-label="Cerrar búsqueda">×</button>
+   </header>
+   <label class="sr-only" for="quick-search-query">Nombre de la estructura anatómica</label>
+   <input id="quick-search-query" type="search" autocomplete="off" spellcheck="false" maxlength="90"
+    placeholder="Ej. temporal, carótida, glúteo…" aria-describedby="quick-search-count">
+   <p id="quick-search-count" class="quick-search-count" role="status" aria-live="polite">Escribe al menos dos letras.</p>
+   <div id="quick-search-results" class="quick-search-results" role="list" aria-label="Coincidencias de estructuras"></div>
+   <footer class="quick-search-footer">
+    <button type="button" id="quick-open-regions">Explorar por regiones</button>
+    <small>Resultados de inventarios preliminares. Atlas comprobará la malla al abrir el modelo.</small>
+   </footer>
+  </div>
+ </dialog>
  <dialog id="atlas-tour" class="atlas-tour" aria-labelledby="tour-title">
   <div class="atlas-tour-content">
    <span class="eyebrow">GUÍA OPCIONAL · ATLAS 3D</span>
