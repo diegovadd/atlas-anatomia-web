@@ -18,6 +18,7 @@ import {
  recordResult,practiceFavorites,pruneProgress,progressFor,progressSummary
 } from './study-progress.js';
 import {createFeedback,feedbackText,feedbackIssueUrl} from './community-feedback.js';
+import {findStudyStructures,exactModelEntry,SEARCH_MIN_LENGTH} from './study-search.js';
 import {
  anatomyCard,groupsForRegion,groupLabel,breadcrumbLabels,
  TOUR_STEPS,TOUR_STORAGE_KEY
@@ -576,6 +577,91 @@ function renderRegions(){
  select.value=state.group;
  renderRegionPath();
 }
+/** LAB 12 — Búsqueda multisistema con acceso directo a mallas existentes.
+ * Inventario preliminar: una entrada editorial no implica que el GLB la incluya.
+ */
+let searchRequest=0;
+function searchableEntries(){
+ const candidates=INTEGRATION_ENTRIES.filter(entry=>{
+  const model=state.models.get(entry.system);
+  // Una vez cargada la fuente, excluir mallas que no estén realmente presentes.
+  return !model||Boolean(exactModelEntry(entry,model));
+ });
+ const bones=state.models.get('bone');
+ if(bones)for(const entry of bones.entries){
+  if(exactModelEntry(entry,bones))candidates.push(entry);
+ }
+ return candidates;
+}
+function renderQuickSearch(){
+ const dialog=$('atlas-quick-search');
+ if(!dialog.open)return;
+ const query=$('quick-search-query').value;
+ const host=$('quick-search-results');host.replaceChildren();
+ const normalized=norm(query);
+ if(normalized.length<SEARCH_MIN_LENGTH){
+  $('quick-search-count').textContent='Escribe al menos dos letras para buscar en los seis sistemas.';
+  return;
+ }
+ const found=findStudyStructures(searchableEntries(),query);
+ $('quick-search-count').textContent=found.length?
+  'Coincidencias encontradas: '+found.length+(found.length===24?' (máximo 24)':'')+
+   '. Selecciona una para verla en 3D.':
+  'No hay coincidencias en el inventario disponible. Prueba otro nombre o una parte.';
+ if(!found.length)return;
+ for(const entry of found){
+  const button=document.createElement('button');button.type='button';
+  button.className='quick-result';
+  const heading=document.createElement('strong');heading.textContent=entry.name;
+  const detail=document.createElement('small');
+  const loaded=state.models.get(entry.system);
+  detail.textContent=sourceLabel(entry.system)+' · '+
+   (entry.originalName&&entry.originalName!==entry.name?entry.originalName+' · ':'')+
+   (loaded?'Malla disponible':'Modelo por cargar');
+  button.append(heading,detail);
+  button.addEventListener('click',()=>openSearchResult(entry));
+  host.appendChild(button);
+ }
+}
+function openQuickSearch(){
+ if($('atlas-quick-search').open)return;
+ closeExtraTools();closeDrawers();
+ $('quick-search-query').value='';
+ $('atlas-quick-search').showModal();
+ renderQuickSearch();
+ $('quick-search-query').focus();
+}
+function closeQuickSearch(){
+ searchRequest++;
+ if($('atlas-quick-search').open)$('atlas-quick-search').close();
+}
+async function openSearchResult(entry){
+ const request=++searchRequest;
+ const status=$('quick-search-count');
+ status.textContent='Localizando '+entry.name+' en el sistema '+sourceLabel(entry.system)+'…';
+ $('quick-search-results').setAttribute('aria-busy','true');
+ try{
+  if(state.review.active)stopReview();
+  if(state.system!==entry.system||!state.models.has(entry.system))
+   await loadSystem(entry.system);
+  if(request!==searchRequest||!$('atlas-quick-search').open)return;
+  if(state.system!==entry.system)return;
+  const exact=exactModelEntry(entry,activeModel());
+  if(!exact){
+   status.textContent='Esta pieza está en el inventario, pero no se identificó su malla 3D en la fuente actual. Prueba otro resultado.';
+   return;
+  }
+  closeQuickSearch();
+  clearSelection(); // Buscar una pieza ya seleccionada siempre debe enfocarla, no deseleccionarla.
+  selectEntry(exact,true);
+  showStatus('Estructura seleccionada: '+exact.name+' · '+sourceLabel(exact.system)+'.');
+ }catch(error){
+  if(request===searchRequest)
+   status.textContent='No se pudo abrir el modelo 3D. Comprueba la conexión o prueba otro sistema.';
+ }finally{
+  if(request===searchRequest)$('quick-search-results').removeAttribute('aria-busy');
+ }
+}
 function renderCatalogue(){
  const host=$('structure-list');host.replaceChildren();
  const query=norm($('structure-query').value);
@@ -863,7 +949,7 @@ function readFeedback(){
  }
 }
 function copyPublicAtlasLink(){
- return new URL('./atlas-estudiar.html',window.location.href).href;
+ return new URL('./atlas-buscar.html',window.location.href).href;
 }
 /** Barra primaria minimalista; herramientas secundarias accesibles desde Más. */
 function closeExtraTools(){
@@ -1040,7 +1126,21 @@ $('intro-open-systems').addEventListener('click',()=>openDrawer('drawer-systems'
 $('intro-open-feedback').addEventListener('click',openFeedback);
 $('header-feedback').addEventListener('click',openFeedback);
 $('info-feedback').addEventListener('click',openFeedback);
-$('bubble-list').addEventListener('click',()=>openDrawer('drawer-catalogue'));
+$('bubble-list').addEventListener('click',openQuickSearch);
+$('quick-search-close').addEventListener('click',closeQuickSearch);
+$('quick-search-query').addEventListener('input',()=>{searchRequest++;renderQuickSearch()});
+$('quick-search-query').addEventListener('keydown',event=>{
+ if(event.key==='ArrowDown'){
+  const first=$('quick-search-results').querySelector('button');
+  if(first){event.preventDefault();first.focus()}
+ }
+ if(event.key==='Enter'){
+  const first=$('quick-search-results').querySelector('button');
+  if(first){event.preventDefault();first.click()}
+ }
+});
+$('quick-open-regions').addEventListener('click',()=>{closeQuickSearch();openDrawer('drawer-catalogue')});
+$('atlas-quick-search').addEventListener('close',()=>{searchRequest++;$('quick-search-results').removeAttribute('aria-busy')});
 $('bubble-more').addEventListener('click',toggleExtraTools);
 $('bubble-tour').addEventListener('click',startTour);
 $('intro-tour').addEventListener('click',startTour);
@@ -1185,7 +1285,14 @@ $('clear-landmarks').addEventListener('click',()=>{
  renderLandmarks();$('landmark-feedback').textContent='Puntos de la sesión vaciados.';
 });
 window.addEventListener('keydown',e=>{
+ const target=e.target;
+ const isTyping=target&&(/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)||target.isContentEditable);
+ if(!isTyping&&(e.key==='/'||((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'))){
+  if($('atlas-tour').open||$('alignment-dialog').open)return;
+  e.preventDefault();openQuickSearch();return;
+ }
  if(e.key!=='Escape')return;
+ if($('atlas-quick-search').open){e.preventDefault();closeQuickSearch();return}
  if(!$('atlas-tour').open&&!$('bubble-extra-tools').hidden){
   closeExtraTools();return;
  }
