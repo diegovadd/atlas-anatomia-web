@@ -94,8 +94,8 @@ export const TOUR_STEPS=Object.freeze([
   target:'active-layer'
  }),
  Object.freeze({
-  title:'Selecciona y estudia estructuras',
-  body:'Haz clic o toca una pieza; gira el modelo arrastrando y acerca con la rueda o con dos dedos. Usa Regiones para encontrar un nombre y Ficha para sus detalles.',
+  title:'Busca y estudia estructuras',
+  body:'Pulsa Buscar para encontrar una pieza por nombre en todos los sistemas (también con / o Ctrl+K). Elige un resultado, gíralo y abre Ver ficha para estudiar sus detalles.',
   target:'bubble-list'
  }),
  Object.freeze({
