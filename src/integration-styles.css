@@ -640,3 +640,23 @@ dialog button{padding:10px 14px;border:1px solid #92bda7;border-radius:8px;backg
  .quick-search-footer{padding:12px 17px;flex-wrap:wrap;gap:9px}
  .quick-search-footer button{width:100%}
 }
+
+/* LAB 13 · repaso breve por región: una opción principal y sin menús nuevos. */
+.region-study-launch{
+ display:grid;gap:8px;padding:14px;
+ border:1px solid #5e8978;border-radius:12px;
+ background:linear-gradient(145deg,#1d3c36,#112d2d);
+}
+.region-study-launch strong{font-size:14px;font-weight:600;color:#e7f4e9}
+.region-study-launch p{margin:0;font-size:12px;line-height:1.55;color:#c6dfd0}
+.region-study-launch button{
+ min-height:46px;padding:11px 14px;font-size:13px;font-weight:600;
+ color:#f1fcf0;border:1px solid #a4cdb0;border-radius:9px;
+ background:#366a53
+}
+.region-study-launch button:hover:not(:disabled){background:#477d61}
+.region-study-launch small{font-size:10px;line-height:1.45;color:#a4c2b3}
+@media(max-width:750px){
+ .region-study-launch{padding:12px}
+ .region-study-launch button{min-height:46px}
+}
