@@ -19,6 +19,7 @@ import {
 } from './study-progress.js';
 import {createFeedback,feedbackText,feedbackIssueUrl} from './community-feedback.js';
 import {findStudyStructures,exactModelEntry,SEARCH_MIN_LENGTH} from './study-search.js';
+import {regionReviewQueue,reviewSessionSummary} from './region-review.js';
 import {
  anatomyCard,groupsForRegion,groupLabel,breadcrumbLabels,
  TOUR_STEPS,TOUR_STORAGE_KEY
@@ -68,7 +69,8 @@ const state={
  nerveBones:true,nerveDiscs:true,jointBoneOpacity:.4,
  hidden:new Set(),isolated:false,markMode:false,annotations:[],pointerDown:null,
  favorites:startupFavorites,progress:loadStudyProgress(startupFavorites),
- review:{active:false,revealed:false,rated:false,index:0,ticket:0,queue:[]},
+ review:{active:false,revealed:false,rated:false,index:0,ticket:0,queue:[],
+  mode:'favorites',session:{answered:0,remembered:0,practice:0}},
  currentTarget:new THREE.Vector3(),radius:3,limit:60
 };
 const MAX_CACHED_MODELS=2;
@@ -529,7 +531,11 @@ function activateCached(system){
  showSource();
  $('atlas-intro').hidden=true;
  showStatus(model.meshesById.size+' mallas seleccionables · '+sourceLabel(system)+'. Modo de un solo sistema.');
- hideLoading();return true;
+ hideLoading();
+ // Si el panel Estudio estaba abierto durante la carga, habilitar el
+ // repaso regional al disponer de mallas 3D reales.
+ if(!$('drawer-study').hidden)renderStudy();
+ return true;
 }
 async function loadSystem(system){
  if(!INTEGRATION_SYSTEM_MAP[system])return;
@@ -786,13 +792,31 @@ function stopReview(){
  if(!state.review.active)return;
  state.review.active=false;state.review.revealed=false;
  state.review.rated=false;state.review.queue=[];state.review.ticket++;
+ state.review.mode='favorites';
  refreshMeshVisibility();renderStudy();
+}
+function regionCandidates(){
+ const model=activeModel();
+ const source=sources.get(state.system);
+ if(!model||!source)return [];
+ return regionReviewQueue(model,{
+  system:state.system,sourceUrl:source.url,
+  accept:entry=>matchesFilters(entry)&&!state.hidden.has(entry.id)
+ });
 }
 function startReview(mode='all'){
  if(state.review.active)return;
- const queue=mode==='practice'?
-  practiceFavorites(state.favorites,state.progress):[...state.favorites];
- if(!queue.length)return;
+ const queue=mode==='region'?regionCandidates():
+  mode==='practice'?practiceFavorites(state.favorites,state.progress):
+   [...state.favorites];
+ if(!queue.length){
+  $('study-feedback').textContent=mode==='region'?
+   'No hay piezas 3D identificadas en este filtro. Prueba otra región o capa.':
+   'No hay favoritos disponibles para esta sesión.';
+  return;
+ }
+ state.review.mode=mode==='region'?'region':'favorites';
+ state.review.session={answered:0,remembered:0,practice:0};
  state.review.active=true;state.review.queue=queue;
  state.review.revealed=false;state.review.rated=false;state.review.index=0;
  renderStudy();showFavorite(queue[0],true);
@@ -801,12 +825,22 @@ function rateReview(result){
  if(!state.review.active||!state.review.revealed||state.review.rated)return;
  const favorite=state.review.queue[state.review.index];
  if(!favorite)return;
- try{state.progress=recordResult(state.progress,favorite,result)}
- catch{$('study-assessment-feedback').textContent='No se pudo registrar el intento.';return}
- state.review.rated=true;
- const saved=persistProgress();
- $('study-feedback').textContent=saved?'Progreso actualizado en este navegador.':
-  'Resultado disponible solo durante esta sesión: almacenamiento bloqueado.';
+ if(state.review.mode==='region'){
+  // Práctica libre: resultados solamente en memoria durante esta sesión.
+  state.review.rated=true;
+  state.review.session.answered++;
+  state.review.session[result==='remembered'?'remembered':'practice']++;
+  $('study-feedback').textContent='Autoevaluación de la sesión, sin guardar datos personales ni notas.';
+ }else{
+  try{state.progress=recordResult(state.progress,favorite,result)}
+  catch{$('study-assessment-feedback').textContent='No se pudo registrar el intento.';return}
+  state.review.rated=true;
+  state.review.session.answered++;
+  state.review.session[result==='remembered'?'remembered':'practice']++;
+  const saved=persistProgress();
+  $('study-feedback').textContent=saved?'Progreso actualizado en este navegador.':
+   'Resultado disponible solo durante esta sesión: almacenamiento bloqueado.';
+ }
  renderStudy();
 }
 function removeFavorite(favorite){
@@ -829,8 +863,12 @@ async function showFavorite(favorite,review=false){
    openDrawer('drawer-study');return;
   }
   if(review){
-   state.group='all';state.layer='all';state.subregion='all';state.layerChoice='layer:all';
-   layerOptions();renderRegions();renderSubregions();renderRegionButtons();
+   // Una sesión regional conserva el filtro visible; los favoritos siguen
+   // pudiendo repasar estructuras guardadas de cualquier región o sistema.
+   if(state.review.mode!=='region'){
+    state.group='all';state.layer='all';state.subregion='all';state.layerChoice='layer:all';
+    layerOptions();renderRegions();renderSubregions();renderRegionButtons();
+   }
    state.hidden.delete(entry.id);state.isolated=false;
    state.selectedIds=new Set([entry.id]);state.selected=entry;state.anchorId=entry.id;
    state.review.revealed=false;state.review.rated=false;
@@ -848,6 +886,13 @@ async function showFavorite(favorite,review=false){
  }
 }
 function renderStudy(){
+ const region=INTEGRATION_REGIONS.find(x=>x.id===state.group);
+ const available=regionCandidates();
+ const label=state.group==='all'?'Todo el cuerpo':region?.label||state.group;
+ $('study-region-caption').textContent=sourceLabel(state.system)+' · '+label+
+  ' · '+available.length+' piezas identificadas disponibles para esta sesión.';
+ $('study-start-region').disabled=state.review.active||!available.length;
+ $('study-start-region').hidden=state.review.active;
  $('study-count').textContent=state.favorites.length+' / '+FAVORITES_MAX;
  const stats=progressSummary(state.favorites,state.progress);
  $('study-summary').textContent=stats.reviewed+' de '+state.favorites.length+
@@ -885,13 +930,16 @@ function renderStudy(){
  state.review.index=wrapReviewIndex(state.review.index,state.review.queue.length);
  const card=state.review.queue[state.review.index];
  $('study-review-count').textContent='Estructura '+(state.review.index+1)+
-  ' de '+state.review.queue.length;
+  ' de '+state.review.queue.length+
+  (state.review.mode==='region'?' · Repaso de región':' · Mis favoritos');
  $('study-answer').hidden=!state.review.revealed;
  $('study-answer').textContent=state.review.revealed?card.name:'';
  $('study-reveal').disabled=state.review.revealed;
  $('study-remembered').disabled=!state.review.revealed||state.review.rated;
  $('study-practice-again').disabled=!state.review.revealed||state.review.rated;
  $('study-next').disabled=!state.review.rated;
+ $('study-next').textContent=state.review.index===state.review.queue.length-1?
+  'Finalizar sesión':'Siguiente estructura';
  $('study-assessment-feedback').textContent=state.review.rated?
   'Intento registrado. Puedes pasar a la siguiente estructura.':
   state.review.revealed?'¿La identificaste antes de revelar el nombre?':
@@ -949,7 +997,7 @@ function readFeedback(){
  }
 }
 function copyPublicAtlasLink(){
- return new URL('./atlas-buscar.html',window.location.href).href;
+ return new URL('./atlas-regiones.html',window.location.href).href;
 }
 /** Barra primaria minimalista; herramientas secundarias accesibles desde Más. */
 function closeExtraTools(){
@@ -1169,6 +1217,7 @@ $('info-isolate').addEventListener('click',()=>{
 });
 $('selection-favorite').addEventListener('click',toggleSelectedFavorites);
 $('info-favorite').addEventListener('click',toggleSelectedFavorites);
+$('study-start-region').addEventListener('click',()=>startReview('region'));
 $('study-start').addEventListener('click',()=>startReview('all'));
 $('study-start-practice').addEventListener('click',()=>startReview('practice'));
 $('study-remembered').addEventListener('click',()=>rateReview('remembered'));
@@ -1183,7 +1232,18 @@ $('study-reveal').addEventListener('click',()=>{
 });
 $('study-next').addEventListener('click',()=>{
  if(!state.review.active||!state.review.rated||!state.review.queue.length)return;
- state.review.index=wrapReviewIndex(state.review.index+1,state.review.queue.length);
+ if(state.review.index===state.review.queue.length-1){
+  const stats=reviewSessionSummary(state.review.session);
+  const mode=state.review.mode;
+  stopReview();
+  $('study-feedback').textContent='Sesión terminada: '+stats.answered+
+   ' intentos · '+stats.remembered+' identificadas · '+
+   stats.practice+' para practicar más.'+
+   (mode==='region'?' Resultados solo de esta sesión.':'');
+  openDrawer('drawer-study');
+  return;
+ }
+ state.review.index++;
  state.review.revealed=false;state.review.rated=false;
  showFavorite(state.review.queue[state.review.index],true);
 });
