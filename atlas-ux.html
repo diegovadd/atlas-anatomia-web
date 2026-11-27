@@ -7,14 +7,14 @@
  <title>ATLAS · Nueva experiencia 3D · Prueba UX10</title>
  <link rel="preconnect" href="https://fonts.googleapis.com">
  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600&display=swap" rel="stylesheet">
- <link rel="stylesheet" href="./src/integration-styles.css?v=atlas-20261109-search12">
+ <link rel="stylesheet" href="./src/integration-styles.css?v=atlas-20261126-regional13">
  <script type="importmap">
  {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
  </script>
  <style>/* Resguardo frente a barras regionales antiguas */
   #region-shortcuts,.atlas-region-shortcuts{display:none!important}
  </style>
- <script type="module" src="./src/integration-viewer.js?v=atlas-20261109-search12"></script>
+ <script type="module" src="./src/integration-viewer.js?v=atlas-20261126-regional13"></script>
 </head>
 <body>
 <div class="atlas-unified">
@@ -179,9 +179,15 @@
   </div>
  </aside>
  <aside class="atlas-drawer right" id="drawer-study" hidden aria-label="Favoritos y repaso anatómico">
-  <header><div><span class="eyebrow">LABORATORIO DE ESTUDIO · 07</span><h2>Mis estructuras</h2></div><button type="button" data-close-drawer aria-label="Cerrar estudio">×</button></header>
+  <header><div><span class="eyebrow">LABORATORIO DE ESTUDIO · 07</span><h2>Practicar anatomía</h2></div><button type="button" data-close-drawer aria-label="Cerrar estudio">×</button></header>
   <div class="drawer-content">
    <p class="drawer-intro">Selecciona estructuras en el modelo, pulsa ☆ Guardar y practica identificándolas en 3D. Las fichas siguen pendientes de revisión académica.</p>
+   <section class="region-study-launch" aria-label="Practicar la región actual">
+    <strong>Repaso rápido por región</strong>
+    <p id="study-region-caption">Carga un sistema y elige una región para comenzar.</p>
+    <button type="button" id="study-start-region" disabled>Practicar región actual</button>
+    <small>Hasta 12 estructuras disponibles · sin guardar favoritos ni notas</small>
+   </section>
    <div class="study-start-options">
     <button type="button" id="study-start" disabled>Comenzar repaso 3D</button>
     <button type="button" id="study-start-practice" disabled>Repetir difíciles</button>
