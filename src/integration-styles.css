@@ -660,3 +660,40 @@ dialog button{padding:10px 14px;border:1px solid #92bda7;border-radius:8px;backg
  .region-study-launch{padding:12px}
  .region-study-launch button{min-height:46px}
 }
+
+/* LAB 14 · revisión bajo demanda, sin ocupar el visor de estudio. */
+.audit-stats{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
+}
+.audit-stat{
+ display:grid;gap:6px;align-content:center;min-height:69px;padding:12px;
+ border:1px solid #45655b;border-radius:10px;background:#152d2f;
+}
+.audit-stat strong{font-size:22px;line-height:1;font-weight:600;color:#edf8f0}
+.audit-stat small{font-size:11px;line-height:1.4;color:#bdd3c6}
+#audit-filter{
+ min-height:43px;background:#193739;color:#f1f8f2;border:1px solid #608675;
+ border-radius:8px;padding:10px
+}
+.audit-list{display:grid;gap:9px;min-height:35px}
+.audit-item{
+ display:grid;gap:8px;padding:12px;border:1px solid #415d56;
+ border-radius:10px;background:#14292e
+}
+.audit-item strong{font-size:12px;line-height:1.4;color:#e5f0e8;overflow-wrap:anywhere}
+.audit-item p{font-size:11px;line-height:1.6;margin:0;color:#bed1c7}
+.audit-item button{
+ justify-self:start;min-height:38px;padding:9px 11px;font-size:11px;
+ color:#e8f7ee;border:1px solid #759f8a;border-radius:7px;background:#2b5445
+}
+.audit-item button:hover{background:#39715a}
+#audit-export{
+ min-height:45px;padding:11px 13px;border:1px solid #9dc6a9;border-radius:9px;
+ background:#315d4c;color:#f0faf2;font-size:12px;font-weight:600
+}
+#audit-source{overflow-wrap:anywhere}
+@media(max-width:750px){
+ .audit-stats{gap:7px}
+ .audit-stat{min-height:63px;padding:10px}
+ .audit-stat strong{font-size:20px}
+}
