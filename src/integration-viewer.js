@@ -20,6 +20,7 @@ import {
 import {createFeedback,feedbackText,feedbackIssueUrl} from './community-feedback.js';
 import {findStudyStructures,exactModelEntry,SEARCH_MIN_LENGTH} from './study-search.js';
 import {regionReviewQueue,reviewSessionSummary} from './region-review.js';
+import {auditLoadedModel,AUDIT_CATEGORIES,exportAuditReport} from './model-audit.js';
 import {
  anatomyCard,groupsForRegion,groupLabel,breadcrumbLabels,
  TOUR_STEPS,TOUR_STORAGE_KEY
@@ -535,12 +536,14 @@ function activateCached(system){
  // Si el panel Estudio estaba abierto durante la carga, habilitar el
  // repaso regional al disponer de mallas 3D reales.
  if(!$('drawer-study').hidden)renderStudy();
+ if(!$('drawer-audit').hidden)renderAudit();
  return true;
 }
 async function loadSystem(system){
  if(!INTEGRATION_SYSTEM_MAP[system])return;
  state.system=system;state.markMode=false;canvas.classList.remove('is-marking');
  $('active-system').value=system;showSource();
+ if(!$('drawer-audit').hidden)renderAudit();
  const token=++state.token;
  for(const [name,data] of state.models)data.root.visible=name===system;
  if(activateCached(system))return;
@@ -997,7 +1000,7 @@ function readFeedback(){
  }
 }
 function copyPublicAtlasLink(){
- return new URL('./atlas-regiones.html',window.location.href).href;
+ return new URL('./atlas-revision.html',window.location.href).href;
 }
 /** Barra primaria minimalista; herramientas secundarias accesibles desde Más. */
 function closeExtraTools(){
@@ -1039,7 +1042,7 @@ function finishTour(){
  markTourSeen();
 }
 function closeDrawers(){
- for(const id of ['drawer-systems','drawer-catalogue','drawer-info','drawer-study','drawer-landmarks','drawer-feedback'])$(id).hidden=true;
+ for(const id of ['drawer-systems','drawer-catalogue','drawer-info','drawer-study','drawer-landmarks','drawer-feedback','drawer-audit'])$(id).hidden=true;
  $('atlas-backdrop').hidden=true;
 }
 function openDrawer(id,passive=false){
@@ -1060,6 +1063,7 @@ function openDrawer(id,passive=false){
  if(id==='drawer-systems')renderSystemMenu();
  if(id==='drawer-catalogue')$('structure-query').focus();
  if(id==='drawer-study')renderStudy();
+ if(id==='drawer-audit')renderAudit();
 }
 function placeLandmark(hit,entry){
  if(state.annotations.length>=300){showStatus('Límite de 300 puntos por sesión. Exporta o borra algunos.');return}
@@ -1077,6 +1081,79 @@ function placeLandmark(hit,entry){
  recreateMarkers(model);renderLandmarks();openDrawer('drawer-landmarks');
  $('landmark-feedback').textContent='Registrado: '+label+' · '+sourceLabel(state.system)+'. Coordenada local, sin calibrar.';
  showStatus('Punto anatómico guardado en esta sesión: '+label);
+}
+/** LAB 14 · Diagnóstico local del modelo activo, sin cambiar geometrías. */
+let currentAudit=null;
+function renderAudit(){
+ const model=activeModel(),source=sources.get(state.system);
+ const host=$('audit-stats');host.replaceChildren();
+ const list=$('audit-list');list.replaceChildren();
+ currentAudit=null;
+ $('audit-export').disabled=true;
+ $('audit-source').textContent=source?
+  source.label+' · '+(model?'Modelo cargado':'Modelo pendiente de cargar'):
+  'No hay fuente de modelo seleccionada.';
+ if(!model||!source){
+  $('audit-status').textContent='Carga el sistema anatómico para comprobar sus estructuras.';
+  return;
+ }
+ try{currentAudit=auditLoadedModel(model,{system:state.system,source})}
+ catch(error){
+  $('audit-status').textContent='No se pudo generar el informe: '+error.message;return;
+ }
+ const counts=currentAudit.counts;
+ const summary=[
+  ['Con malla',counts.withMesh],
+  ['Sin malla',counts.missing],
+  ['Sin clasificación',counts.unclassified],
+  ['Nombres repetidos',counts.duplicateGroups],
+  ['IDs provisionales',counts.unstableIds],
+  ['Pendientes de cotejo',counts.pendingReview]
+ ];
+ for(const [title,value] of summary){
+  const tile=document.createElement('div');tile.className='audit-stat';
+  const num=document.createElement('strong');num.textContent=String(value);
+  const label=document.createElement('small');label.textContent=title;
+  tile.append(num,label);host.appendChild(tile);
+ }
+ $('audit-source').textContent=source.label+' · '+counts.inventory+
+  ' entradas inventariadas · '+counts.meshObjects+
+  ' objetos de malla asociados · fuente: '+source.url;
+ $('audit-export').disabled=false;
+ renderAuditIssues();
+}
+function renderAuditIssues(){
+ const host=$('audit-list');host.replaceChildren();
+ const report=currentAudit;
+ if(!report)return;
+ const filter=$('audit-filter').value;
+ const found=report.issues.filter(i=>filter==='all'||i.type===filter);
+ $('audit-status').textContent=found.length?
+  found.length+' observaciones técnicas'+
+    (found.length>35?' · mostrando primeras 35':'')+
+    '. Requieren revisión humana.':
+  'No hay observaciones de este tipo en el modelo cargado.';
+ for(const issue of found.slice(0,35)){
+  const row=document.createElement('div');row.className='audit-item';
+  row.setAttribute('role','listitem');
+  const title=document.createElement('strong');
+  title.textContent=(AUDIT_CATEGORIES[issue.type]||issue.type)+' · '+issue.name;
+  const detail=document.createElement('p');detail.textContent=issue.detail;
+  row.append(title,detail);
+  if(issue.entryId&&activeModel()?.meshesById?.get(issue.entryId)?.length){
+   const view=document.createElement('button');view.type='button';
+   view.textContent='Localizar en 3D';
+   view.addEventListener('click',()=>{
+    if(!currentAudit||currentAudit.system!==state.system)return;
+    const entry=activeModel()?.byId?.get(issue.entryId);
+    if(!entry||!activeModel().meshesById.get(entry.id)?.length)return;
+    closeDrawers();restore();
+    selectEntry(entry,true);
+   });
+   row.appendChild(view);
+  }
+  host.appendChild(row);
+ }
 }
 function renderLandmarks(){
  const groups=landmarksByLabel(state.annotations);
@@ -1203,6 +1280,19 @@ $('tour-next').addEventListener('click',()=>{
 $('atlas-tour').addEventListener('close',markTourSeen);
 $('bubble-info').addEventListener('click',()=>openDrawer('drawer-info'));
 $('bubble-study').addEventListener('click',()=>openDrawer('drawer-study'));
+$('bubble-audit').addEventListener('click',()=>openDrawer('drawer-audit'));
+$('audit-filter').addEventListener('change',renderAuditIssues);
+$('audit-export').addEventListener('click',()=>{
+ if(!currentAudit||currentAudit.system!==state.system)return;
+ const body=exportAuditReport(currentAudit);
+ const blob=new Blob([body],{type:'application/json;charset=utf-8'});
+ const url=URL.createObjectURL(blob);
+ const anchor=document.createElement('a');
+ anchor.href=url;anchor.download='atlas-revision-'+state.system+'.json';
+ document.body.appendChild(anchor);anchor.click();anchor.remove();
+ window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+ $('audit-status').textContent='Informe descargado. Su contenido es preliminar y no equivale a validación anatómica.';
+});
 $('selection-info').addEventListener('click',()=>openDrawer('drawer-info'));
 $('selection-clear').addEventListener('click',clearSelection);
 $('bubble-mark').addEventListener('click',()=>openDrawer('drawer-landmarks'));
