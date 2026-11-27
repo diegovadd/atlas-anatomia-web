@@ -7,14 +7,14 @@
  <title>ATLAS · Estudiar anatomía 3D · Experiencia minimalista</title>
  <link rel="preconnect" href="https://fonts.googleapis.com">
  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600&display=swap" rel="stylesheet">
- <link rel="stylesheet" href="./src/integration-styles.css?v=atlas-20261126-regional13">
+ <link rel="stylesheet" href="./src/integration-styles.css?v=atlas-20261126-audit14">
  <script type="importmap">
  {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
  </script>
  <style>/* Resguardo frente a barras regionales antiguas */
   #region-shortcuts,.atlas-region-shortcuts{display:none!important}
  </style>
- <script type="module" src="./src/integration-viewer.js?v=atlas-20261126-regional13"></script>
+ <script type="module" src="./src/integration-viewer.js?v=atlas-20261126-audit14"></script>
 </head>
 <body>
 <div class="atlas-unified">
@@ -36,6 +36,7 @@
    <button type="button" id="bubble-reset" title="Restablecer la vista"><span aria-hidden="true">↺</span>Reiniciar</button>
    <button type="button" id="restore-visible" title="Restaurar estructuras retiradas"><span aria-hidden="true">◌</span>Restaurar</button>
    <label class="multi-toggle" for="multi-select-toggle"><input type="checkbox" id="multi-select-toggle"> Selección múltiple</label>
+    <button type="button" id="bubble-audit" title="Comprobar etiquetas y mallas 3D"><span aria-hidden="true">✓</span>Revisión</button>
     <button type="button" id="bubble-tour" title="Guía para comenzar a usar Atlas"><span aria-hidden="true">?</span>Ayuda</button>
    </div>
   </nav>
@@ -264,6 +265,26 @@
    </div>
    <button type="button" id="feedback-copy-link" class="feedback-invite">Copiar enlace para invitar a otra persona</button>
    <p class="drawer-footnote">«Compartir sin GitHub» abre las aplicaciones disponibles en tu dispositivo. Si no hay opción de compartir, podrás copiar o descargar el informe para enviarlo manualmente. Atlas no cuenta todavía con un buzón anónimo centralizado. GitHub requiere cuenta y publica el reporte; evita incluir datos personales o clínicos.</p>
+  </div>
+ </aside>
+ <aside class="atlas-drawer right" id="drawer-audit" hidden aria-label="Revisión técnica del modelo anatómico">
+  <header><div><span class="eyebrow">REVISIÓN DE MODELOS · LAB 14</span><h2>Comprobar estructuras</h2></div><button type="button" data-close-drawer aria-label="Cerrar revisión">×</button></header>
+  <div class="drawer-content">
+   <p class="drawer-intro">Diagnóstico del sistema 3D que tienes abierto. Señala elementos que merecen revisión, pero <strong>no certifica nombres ni geometría anatómica</strong>.</p>
+   <p id="audit-source" class="drawer-footnote" aria-live="polite">Carga un sistema anatómico.</p>
+   <div id="audit-stats" class="audit-stats" aria-label="Resumen de revisión"></div>
+   <label for="audit-filter">Mostrar observaciones</label>
+   <select id="audit-filter">
+    <option value="all">Todas las observaciones</option>
+    <option value="missing">Entradas sin malla</option>
+    <option value="unclassified">Clasificación pendiente</option>
+    <option value="duplicate">Posibles etiquetas repetidas</option>
+    <option value="identifier">Identificadores provisionales</option>
+   </select>
+   <p id="audit-status" class="drawer-footnote" role="status" aria-live="polite">Las observaciones aparecen al cargar el modelo.</p>
+   <div id="audit-list" class="audit-list" role="list"></div>
+   <button type="button" id="audit-export" disabled>Descargar revisión JSON</button>
+   <p class="drawer-footnote">El informe solo incluye nombres, identificadores, recuentos y procedencia de la fuente 3D. No incluye tus favoritos, resultados de estudio ni datos personales. Los posibles errores deben comprobarse con Moore y Rouvière antes de cambiar fichas o modelos.</p>
   </div>
  </aside>
  <aside class="atlas-drawer right" id="drawer-landmarks" hidden aria-label="Registro de puntos anatómicos">
