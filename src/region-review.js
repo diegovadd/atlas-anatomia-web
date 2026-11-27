@@ -12,7 +12,11 @@ export function regionReviewQueue(model,{system,sourceUrl,accept=()=>true,limit=
   !Number.isInteger(limit)||limit<1)return [];
  const found=[],seen=new Set();
  for(const entry of model.entries){
-  if(entry?.system!==system||isContextBone(entry,system)||!accept(entry))continue;
+  // La fuente de vísceras contiene identificadores automáticos para
+  // mallas sin correspondencia anatómica: no deben convertirse en preguntas.
+  if(entry?.system!==system||isContextBone(entry,system)||!accept(entry)||
+   entry.kind==='No clasificado'||entry.subregion==='Sin clasificación confirmada'||
+   /^organ-source-/.test(entry.id)||/^(malla sin etiqueta|unnamed mesh)$/i.test(entry.name))continue;
   const meshes=model.meshesById?.get(entry.id);
   if(!Array.isArray(meshes)||!meshes.length||model.byId?.get(entry.id)!==entry)continue;
   try{
